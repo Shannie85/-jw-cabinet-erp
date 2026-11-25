@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>员工打卡</title>
+<style>
+:root{--blue:#2f8cf0;--orange:#ff8a1f;--purple:#a45be8;--ink:#1d2433;--mute:#7b8496;--card:#fff;--bg:#f4f7fb;--green:#1fa760;--red:#e5484d}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#dfe6f0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,Roboto,sans-serif;color:var(--ink)}
+#app{max-width:430px;min-height:100vh;margin:0 auto;background:var(--bg);position:relative;overflow:hidden;padding-bottom:84px}
+.hero{background:linear-gradient(180deg,#2f8cf0 0%,#6bb6ff 70%,#f4f7fb 100%);padding:max(18px,env(safe-area-inset-top)) 16px 0;height:330px;position:relative}
+.hero:after{content:"";position:absolute;left:-10%;right:-10%;bottom:-40px;height:140px;background:var(--bg);border-radius:50% 50% 0 0/100% 100% 0 0}
+.greet{display:flex;gap:10px;align-items:center}
+.pill{flex:1;background:#fff;border-radius:40px;padding:8px 14px 8px 8px;display:flex;gap:10px;align-items:center;box-shadow:0 4px 14px #0001}
+.avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#ffb36b,#ff6f91);color:#fff;font-weight:700;display:grid;place-items:center;font-size:18px}
+.pill b{display:block;font-size:15px}.pill small{color:var(--mute);font-size:12px}
+.bell{width:46px;height:46px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:20px;border:0;box-shadow:0 4px 14px #0001}
+.where{color:#fff;font-size:13px;margin:14px 6px 0;opacity:.95}
+.status{color:#fff;margin:6px 6px 0;font-size:13px}
+.big{font-size:34px;font-weight:700;color:#fff;margin:6px 6px 0;letter-spacing:1px}
+.btns{position:absolute;left:0;right:0;top:215px;z-index:2;display:flex;justify-content:center;align-items:center;gap:26px}
+.cbtn{border:0;border-radius:50%;color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 20px #0003;transition:transform .12s}
+.cbtn:active{transform:scale(.94)}
+.cbtn.s{width:62px;height:62px;font-size:26px}
+.cbtn.m{width:104px;height:104px;font-size:44px;background:radial-gradient(circle at 35% 30%,#ffb066,var(--orange));box-shadow:0 0 0 10px #ff8a1f33,0 10px 24px #ff8a1f66}
+.cbtn.m.out{background:radial-gradient(circle at 35% 30%,#ff8f95,var(--red));box-shadow:0 0 0 10px #e5484d33,0 10px 24px #e5484d66}
+.cbtn.wifi{background:var(--blue)}.cbtn.nfc{background:var(--purple)}
+.lbl{position:absolute;top:322px;left:0;right:0;text-align:center;font-size:12px;color:var(--mute);z-index:2}
+.sec{padding:0 16px;margin-top:88px}
+.sec h3{margin:0 0 12px;font-size:17px;display:flex;justify-content:space-between;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px 6px}
+.qa{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11.5px;color:var(--ink);cursor:pointer;padding:0}
+.qa i{width:52px;height:52px;border-radius:50%;background:#fdf1de;display:grid;place-items:center;font-style:normal;font-size:24px}
+.today{margin:18px 16px 0;background:#fff;border-radius:16px;padding:14px;box-shadow:0 2px 10px #0000000d}
+.today .row{display:flex;justify-content:space-between;font-size:14px;padding:4px 0}
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#fff;display:flex;justify-content:space-around;padding:8px 0 max(8px,env(safe-area-inset-bottom));box-shadow:0 -4px 16px #0001;z-index:20}
+.nav button{background:none;border:0;display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--mute);gap:2px;cursor:pointer}
+.nav button span{font-size:22px}.nav .on{color:var(--blue);font-weight:600}
+.toast{position:fixed;top:max(14px,env(safe-area-inset-top));left:50%;transform:translate(-50%,-140%);width:calc(100% - 28px);max-width:400px;background:#fff;border-radius:18px;padding:14px 16px;display:flex;gap:14px;align-items:center;box-shadow:0 10px 30px #0003;z-index:50;transition:transform .35s cubic-bezier(.2,1.2,.4,1)}
+.toast.show{transform:translate(-50%,0)}
+.toast .ic{width:48px;height:48px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-size:24px;flex:none}
+.toast.err .ic{background:var(--red)}
+.toast b{display:block;font-size:17px}.toast small{color:var(--mute);font-size:14px}
+.page{display:none;padding:max(18px,env(safe-area-inset-top)) 16px 20px}
+.page h2{margin:0 0 14px}
+.day{background:#fff;border-radius:14px;padding:12px 14px;margin-bottom:12px;box-shadow:0 2px 10px #0000000d}
+.day .hd{display:flex;justify-content:space-between;font-weight:600;margin-bottom:6px}
+.rec{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid #eef1f6;font-size:14px}
+.rec img{width:36px;height:36px;border-radius:50%;object-fit:cover}
+.tag{font-size:11px;padding:2px 8px;border-radius:10px;color:#fff}.tag.in{background:var(--green)}.tag.out{background:var(--red)}
+.rec small{color:var(--mute);display:block}
+.modal{position:fixed;inset:0;background:#000c;z-index:60;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;padding:20px;color:#fff;text-align:center}
+.modal.show{display:flex}
+.cam{width:min(78vw,300px);aspect-ratio:3/4;border-radius:50%/40%;overflow:hidden;border:4px solid #fff;background:#222}
+.cam video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.btn{border:0;border-radius:30px;padding:13px 30px;font-size:16px;font-weight:600;color:#fff;background:var(--orange);cursor:pointer}
+.btn.g{background:#fff3;}
+.set{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px}
+.set input{width:100%;padding:10px;border:1px solid #d8dfeb;border-radius:10px;font-size:15px;margin:6px 0 10px}
+.set button{margin-top:4px}
+.set .btn{width:100%}.set p{color:var(--mute);font-size:13px;margin:4px 0}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="toast" id="toast"><div class="ic" id="tIc">✓</div><div><b id="tT"></b><small id="tS"></small></div></div>
+
+  <!-- 首页 -->
+  <section id="home">
+    <div class="hero">
+      <div class="greet">
+        <div class="pill"><div class="avatar" id="av">?</div><div><b id="hello">你好</b><small id="now">—</small></div></div>
+        <button class="bell" onclick="soon('通知')">🔔</button>
+      </div>
+      <div class="where" id="where">📍 办公室未设定</div>
+      <div class="status" id="status">今天还没有打卡</div>
+      <div class="big" id="big">--:--</div>
+    </div>
+    <div class="btns">
+      <button class="cbtn s wifi" onclick="wifi()" aria-label="WiFi打卡">📶</button>
+      <button class="cbtn m" id="mainBtn" onclick="clock('GPS定位')" aria-label="定位打卡">📍</button>
+      <button class="cbtn s nfc" onclick="nfc()" aria-label="NFC打卡">((·))</button>
+    </div>
+    <div class="lbl" id="mainLbl">点橙色按钮：定位 + 自拍打卡</div>
+
+    <div class="today" style="margin-top:44px">
+      <div class="row"><span>今天上班</span><b id="tIn">—</b></div>
+      <div class="row"><span>今天下班</span><b id="tOut">—</b></div>
+      <div class="row"><span>今天已工作</span><b id="tHrs">—</b></div>
+    </div>
+
+    <div class="sec" style="margin-top:22px">
+      <h3>快捷功能 <small style="color:var(--blue);font-weight:400;font-size:13px" onclick="soon('自定义')">自定义 ›</small></h3>
+      <div class="grid">
+        <button class="qa" onclick="go('history')"><i>🗓️</i>打卡记录</button>
+        <button class="qa" onclick="soon('假期余额')"><i>🏖️</i>假期余额</button>
+        <button class="qa" onclick="soon('报销额度')"><i>🧾</i>报销额度</button>
+        <button class="qa" onclick="soon('工资单')"><i>💌</i>工资单</button>
+        <button class="qa" onclick="soon('加班申请')"><i>⏰</i>加班申请</button>
+        <button class="qa" onclick="soon('请假')"><i>📅</i>请假</button>
+        <button class="qa" onclick="soon('新报销')"><i>📝</i>新报销</button>
+        <button class="qa" onclick="go('settings')"><i>⚙️</i>设置</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 打卡记录 -->
+  <section class="page" id="history"><h2>打卡记录</h2><div id="histList"></div></section>
+
+  <!-- 设置 -->
+  <section class="page" id="settings">
+    <h2>设置</h2>
+    <div class="set">
+      <b>我的名字</b>
+      <input id="nameIn" placeholder="例如：Tiffany Ng">
+      <button class="btn" onclick="saveName()">保存名字</button>
+    </div>
+    <div class="set">
+      <b>办公室位置</b>
+      <p id="offInfo">还没设定</p>
+      <input id="offName" placeholder="办公室名称，例如：KL Office">
+      <input id="offRad" type="number" value="150" placeholder="多少米内可以打卡">
+      <button class="btn" onclick="setOffice()">把我现在的位置设为办公室</button>
+      <p>请人在办公室里时按这个按钮。以后只有在这个范围内才能打卡。</p>
+    </div>
+    <div class="set"><button class="btn" style="background:#e5484d" onclick="resetAll()">清空所有打卡记录</button></div>
+  </section>
+
+  <nav class="nav">
+    <button class="on" data-p="home" onclick="go('home')"><span>🏠</span>首页</button>
+    <button data-p="history" onclick="go('history')"><span>🗓️</span>记录</button>
+    <button data-p="settings" onclick="go('settings')"><span>⚙️</span>设置</button>
+  </nav>
+
+  <!-- 自拍验证 -->
+  <div class="modal" id="cam">
+    <div id="camTitle" style="font-size:18px;font-weight:600">请看着镜头</div>
+    <div class="cam"><video id="vid" autoplay playsinline muted></video></div>
+    <div id="camMsg" style="font-size:14px;opacity:.85">拍一张自拍作为打卡证明</div>
+    <div style="display:flex;gap:12px"><button class="btn g" onclick="camCancel()">取消</button><button class="btn" id="shotBtn" onclick="shoot()">拍照打卡</button></div>
+  </div>
+</div>
+
+<script>
+const KEY='clock_v1';
+let S=load();
+function load(){try{return Object.assign({name:'',office:null,records:[]},JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){return {name:'',office:null,records:[]}}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('空间不足，无法保存',e.message,true)}}
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
+const hm=d=>pad(d.getHours())+':'+pad(d.getMinutes());
+const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const wk=['周日','周一','周二','周三','周四','周五','周六'];
+
+/* ---------- 提示条 ---------- */
+let tt;function toast(t,s,err){$('tT').textContent=t;$('tS').textContent=s||'';$('tIc').textContent=err?'!':'✓';$('toast').classList.toggle('err',!!err);$('toast').classList.add('show');clearTimeout(tt);tt=setTimeout(()=>$('toast').classList.remove('show'),3800)}
+function soon(n){toast(n,'这个功能下一步再做',false)}
+
+/* ---------- 页面切换 ---------- */
+function go(p){['home','history','settings'].forEach(x=>$(x).style.display=x===p?'block':'none');
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));
+  if(p==='history')renderHist();if(p==='settings')renderSettings();scrollTo(0,0)}
+
+/* ---------- 首页刷新 ---------- */
+function todayRecs(){const t=ymd(new Date());return S.records.filter(r=>ymd(new Date(r.t))===t)}
+function nextType(){const r=todayRecs();return r.length&&r[r.length-1].type==='in'?'out':'in'}
+function render(){
+  const d=new Date();
+  $('now').textContent=`${wk[d.getDay()]}, ${ymd(d)} ${hm(d)}`;
+  $('big').textContent=hm(d);
+  $('hello').textContent='你好，'+(S.name||'同事');
+  $('av').textContent=(S.name||'?').trim().charAt(0).toUpperCase();
+  $('where').textContent='📍 '+(S.office?S.office.name:'办公室未设定（去设置里设定）');
+  const r=todayRecs(),ins=r.filter(x=>x.type==='in'),outs=r.filter(x=>x.type==='out');
+  $('tIn').textContent=ins.length?hm(new Date(ins[0].t)):'—';
+  $('tOut').textContent=outs.length?hm(new Date(outs[outs.length-1].t)):'—';
+  let ms=0,open=null;r.forEach(x=>{if(x.type==='in')open=new Date(x.t);else if(open){ms+=new Date(x.t)-open;open=null}});
+  if(open)ms+=d-open;
+  $('tHrs').textContent=r.length?`${Math.floor(ms/36e5)}小时${pad(Math.floor(ms%36e5/6e4))}分`:'—';
+  const nt=nextType();
+  $('mainBtn').classList.toggle('out',nt==='out');
+  $('status').textContent=nt==='out'?'✅ 已上班，下班时再点一次':'还没上班打卡';
+  $('mainLbl').textContent=nt==='out'?'点红色按钮：下班打卡':'点橙色按钮：上班打卡（定位 + 自拍）';
+}
+setInterval(render,15000);
+
+/* ---------- 定位 ---------- */
+function dist(a,b,c,d){const R=6371000,rad=x=>x*Math.PI/180,dl=rad(c-a),dn=rad(d-b);
+  const h=Math.sin(dl/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function getPos(){return new Promise((ok,no)=>{
+  if(!navigator.geolocation)return no(new Error('这个浏览器不支持定位'));
+  navigator.geolocation.getCurrentPosition(p=>ok(p.coords),e=>no(new Error(e.code===1?'你没有允许定位，请在浏览器里打开定位权限':'暂时拿不到位置，请到信号好的地方再试')),{enableHighAccuracy:true,timeout:15000,maximumAge:0})})}
+
+/* ---------- 打卡主流程 ---------- */
+let busy=false;
+async function clock(method){
+  if(busy)return;busy=true;
+  try{
+    $('mainLbl').textContent='正在定位…';
+    const pos=await getPos();
+    if(!S.office){
+      if(confirm('还没设定办公室。把你现在的位置当作办公室吗？')){S.office={name:'办公室',lat:pos.latitude,lng:pos.longitude,radius:150};save()}
+      else throw new Error('请先到「设置」设定办公室位置');
+    }
+    const m=dist(pos.latitude,pos.longitude,S.office.lat,S.office.lng);
+    if(m>S.office.radius)throw new Error(`你离${S.office.name}还有约${Math.round(m)}米，需要在${S.office.radius}米内才能打卡`);
+    const photo=await selfie();
+    if(photo===null)throw new Error('已取消打卡');
+    const type=nextType();
+    S.records.push({type,t:new Date().toISOString(),method,place:S.office.name,dist:Math.round(m),face:photo.face,photo:photo.img});
+    save();render();
+    toast(`${S.name||'你'} ${type==='in'?'上班打卡成功':'下班打卡成功'}`,`${photo.face?'人脸已验证':'已拍照记录'} · ${S.office.name}`);
+  }catch(e){toast('打卡没成功',e.message,true);render()}
+  finally{busy=false}
+}
+
+/* ---------- 自拍验证 ---------- */
+let stream,camRes;
+async function selfie(){
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false})}
+  catch(e){throw new Error('打不开摄像头，请允许浏览器使用摄像头')}
+  $('vid').srcObject=stream;$('cam').classList.add('show');$('camMsg').textContent='拍一张自拍作为打卡证明';
+  return new Promise(r=>camRes=r);
+}
+function stopCam(){stream&&stream.getTracks().forEach(t=>t.stop());$('cam').classList.remove('show')}
+function camCancel(){stopCam();camRes(null)}
+async function shoot(){
+  const v=$('vid');if(!v.videoWidth){$('camMsg').textContent='摄像头还没准备好，等一下';return}
+  const c=document.createElement('canvas'),w=240,h=Math.round(w*v.videoHeight/v.videoWidth);c.width=w;c.height=h;
+  c.getContext('2d').drawImage(v,0,0,w,h);
+  let face=false;
+  if('FaceDetector' in window){try{face=(await new FaceDetector().detect(c)).length>0}catch(e){}
+    if(!face){$('camMsg').textContent='没看到人脸，请正对镜头再拍';return}}
+  stopCam();camRes({img:c.toDataURL('image/jpeg',.6),face});
+}
+
+/* ---------- WiFi / NFC ---------- */
+function wifi(){toast('WiFi 打卡','网页读不到WiFi名称，需要做成手机App才能用',true)}
+async function nfc(){
+  if(!('NDEFReader' in window))return toast('NFC 打卡','这台手机/浏览器不支持（安卓 Chrome 才行）',true);
+  try{const r=new NDEFReader();await r.scan();toast('请把手机靠近打卡贴纸','');
+    r.onreading=()=>{r.onreading=null;clock('NFC')}}
+  catch(e){toast('NFC 没打开',e.message,true)}
+}
+
+/* ---------- 记录页 ---------- */
+function renderHist(){
+  const by={};S.records.slice().reverse().forEach(r=>{(by[ymd(new Date(r.t))]??=[]).push(r)});
+  const days=Object.keys(by);
+  $('histList').innerHTML=days.length?days.map(k=>{
+    const rs=by[k].slice().reverse(),d=new Date(k+'T00:00');
+    return `<div class="day"><div class="hd"><span>${k} ${wk[d.getDay()]}</span></div>`+rs.map(r=>
+      `<div class="rec">${r.photo?`<img src="${r.photo}">`:''}<div style="flex:1"><span class="tag ${r.type}">${r.type==='in'?'上班':'下班'}</span> <b>${hm(new Date(r.t))}</b><small>${r.method} · ${r.place} · ${r.dist}米${r.face?' · 人脸✓':''}</small></div></div>`).join('')+`</div>`}).join('')
+    :'<p style="color:#7b8496">还没有打卡记录</p>';
+}
+
+/* ---------- 设置页 ---------- */
+function renderSettings(){
+  $('nameIn').value=S.name;
+  $('offInfo').textContent=S.office?`${S.office.name}（${S.office.radius}米内可打卡）`:'还没设定';
+  $('offName').value=S.office?S.office.name:'';if(S.office)$('offRad').value=S.office.radius;
+}
+function saveName(){S.name=$('nameIn').value.trim();save();render();toast('已保存','你好，'+(S.name||'同事'))}
+async function setOffice(){
+  try{const p=await getPos();S.office={name:$('offName').value.trim()||'办公室',lat:p.latitude,lng:p.longitude,radius:Math.max(30,+$('offRad').value||150)};
+    save();renderSettings();render();toast('办公室已设定',S.office.name)}catch(e){toast('设定失败',e.message,true)}
+}
+function resetAll(){if(confirm('确定清空所有打卡记录吗？不能恢复。')){S.records=[];save();render();renderHist();toast('已清空','')}}
+
+go('home');render();
+if(!S.name)setTimeout(()=>{const n=prompt('请问怎么称呼你？');if(n){S.name=n.trim();save();render()}},400);
+</script>
+</body>
+</html>
