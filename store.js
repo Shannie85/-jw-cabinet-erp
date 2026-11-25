@@ -155,7 +155,7 @@ function loginScreen(setup){return new Promise(resolve=>{
   const box=document.createElement('div');box.id='loginBox';
   const st=document.createElement('style');st.textContent=CSS;document.head.appendChild(st);
   let mode=setup?'setup':'login';
-  const draw=()=>{box.innerHTML=`<form id="lf"><img src="logo.png" alt="" style="height:84px;margin:0 auto;display:block" onerror="this.remove()"><h2 style="text-align:center">${mode==='setup'?'首次设置：创建管理员':'考勤系统登录'}</h2>
+  const draw=()=>{box.innerHTML=`<form id="lf"><h2>${mode==='setup'?'首次设置：创建管理员':'考勤系统登录'}</h2>
    <p>${mode==='setup'?'这是第一次使用。请输入设置码，并创建你自己的管理员（HR）账号。':'请用公司给你的邮箱和密码登录。'}</p>
    ${mode==='setup'?'<label>设置码<input id="lCode" autocomplete="off"></label><label>你的名字<input id="lName"></label>':''}
    <label>邮箱<input id="lMail" type="email" autocomplete="username" inputmode="email"></label>

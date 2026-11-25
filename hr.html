@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HR 考勤后台</title>
-<link rel="icon" href="logo.png">
 <style>
 :root{--blue:#2f8cf0;--ink:#1d2433;--mute:#7b8496;--line:#e6ebf3;--bg:#f4f7fb;--green:#1fa760;--red:#e5484d;--orange:#f08a1f;--purple:#8e4ee0;--teal:#0e9aa7}
 *{box-sizing:border-box}
@@ -126,7 +125,7 @@ function line(pts,fmt){const W=520,H=160,pad=26,n=pts.length;if(n<2)return '<p c
 /* ---------- 导航 ---------- */
 const NAV=[['summary','📊','考勤总结'],['monitor','📡','实时监控'],['data','🗂️','考勤数据'],['schedule','📆','排班表'],['ot','⏰','加班管理'],['approve','✅','审批流程'],['assist','🤝','主管协助打卡'],['report','🧾','报表'],['analytics','📈','人力分析'],['staff','👥','员工管理'],['settings','⚙️','设置']];
 function pendingCount(){return DB.requests().filter(q=>DB.canDecide(q,me)).length}
-function drawNav(){$('side').innerHTML='<div class="logo"><img src="logo.png" alt="" style="display:block;height:44px;margin-bottom:6px" onerror="this.remove()">HR 考勤后台</div>'+NAV.filter(n=>n[0]!=='staff'||isHR()).map(([k,i,t])=>`<button class="${ST.page===k?'on':''}" onclick="go('${k}')">${i} ${t}${k==='approve'&&pendingCount()?`<span class="n">${pendingCount()}</span>`:''}</button>`).join('')}
+function drawNav(){$('side').innerHTML='<div class="logo">🕘 HR 考勤后台</div>'+NAV.filter(n=>n[0]!=='staff'||isHR()).map(([k,i,t])=>`<button class="${ST.page===k?'on':''}" onclick="go('${k}')">${i} ${t}${k==='approve'&&pendingCount()?`<span class="n">${pendingCount()}</span>`:''}</button>`).join('')}
 function drawMe(){$('langBtn').textContent='🌐 '+I18N.label();$('meName').textContent=me.name+'（'+roleName[me.role]+'）'}
 let timer;
 function go(p){ST.page=p;try{history.replaceState(null,'','#'+p)}catch(e){}render();scrollTo(0,0)}
