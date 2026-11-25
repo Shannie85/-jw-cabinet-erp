@@ -1,0 +1,31 @@
+{
+ "name": "JW 打卡",
+ "short_name": "JW 打卡",
+ "description": "JW Cabinet",
+ "start_url": "/",
+ "scope": "/",
+ "display": "standalone",
+ "orientation": "any",
+ "background_color": "#2f8cf0",
+ "theme_color": "#2f8cf0",
+ "icons": [
+  {
+   "src": "icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}
