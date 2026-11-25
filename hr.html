@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HR 考勤后台</title>
+<style>
+:root{--blue:#2f8cf0;--ink:#1d2433;--mute:#7b8496;--line:#e6ebf3;--bg:#f4f7fb;--green:#1fa760;--red:#e5484d;--orange:#f08a1f;--purple:#8e4ee0;--teal:#0e9aa7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,Roboto,sans-serif;color:var(--ink);font-size:14px}
+.side{position:fixed;left:0;top:0;bottom:0;width:208px;background:#fff;border-right:1px solid var(--line);padding:16px 10px;overflow:auto;z-index:5}
+.logo{font-weight:700;font-size:17px;padding:4px 10px 14px;color:var(--blue)}
+.side button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:10px 12px;border-radius:10px;font-size:14px;color:var(--ink);cursor:pointer;text-align:left}
+.side button:hover{background:#f1f5fb}.side button.on{background:#e8f2ff;color:var(--blue);font-weight:600}
+.side .n{margin-left:auto;background:var(--red);color:#fff;font-size:11px;border-radius:10px;padding:1px 7px}
+.main{margin-left:208px;padding:0 24px 40px}
+.top{display:flex;justify-content:space-between;align-items:center;padding:16px 0;gap:12px;flex-wrap:wrap}
+.top h1{margin:0;font-size:22px}
+.top .who{display:flex;gap:10px;align-items:center;color:var(--mute)}
+select,input,textarea{font:inherit;padding:7px 9px;border:1px solid #d5dce8;border-radius:8px;background:#fff;color:var(--ink)}
+input[type=color]{padding:0;width:34px;height:30px}
+.btn{border:0;background:var(--blue);color:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;font:inherit}
+.btn.g{background:#e8eef7;color:var(--ink)}.btn.r{background:var(--red)}.btn.ok{background:var(--green)}.btn.s{padding:4px 10px;font-size:12.5px}
+.card{background:#fff;border-radius:14px;padding:16px;box-shadow:0 1px 6px #0000000a;margin-bottom:16px;overflow-x:auto}
+.card h3{margin:0 0 12px;font-size:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 1px 6px #0000000a}
+.kpi small{color:var(--mute)}.kpi b{display:block;font-size:26px;margin-top:4px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;color:var(--mute);font-weight:500;padding:8px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 8px;border-bottom:1px solid #f0f3f8;vertical-align:middle}
+tr.click{cursor:pointer}tr.click:hover td{background:#f8fafd}
+.chip{display:inline-block;padding:2px 9px;border-radius:11px;font-size:12px;color:#fff;white-space:nowrap}
+.c-正常{background:var(--green)}.c-迟到,.c-早退,.c-迟到早退{background:var(--orange)}.c-缺勤,.c-未到岗,.c-漏打卡{background:var(--red)}.c-请假{background:var(--blue)}
+.c-休息,.c-未上班,.c-未开始{background:#aab3c4}.c-上班中{background:var(--teal)}.c-休息日出勤{background:var(--purple)}
+.c-pm,.c-hr{background:var(--orange)}.c-ok{background:var(--green)}.c-no{background:var(--red)}
+.tag{font-size:11px;background:#eef2f9;color:#51607a;border-radius:6px;padding:1px 6px;margin-left:4px}
+.tag.w{background:#fff1e0;color:#b45f06}
+.av{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#dbe9ff;color:var(--blue);font-weight:700;font-size:12px;margin-right:8px;vertical-align:middle}
+.tabs{display:flex;gap:6px;margin-bottom:12px}.tabs button{border:0;background:#e8eef7;border-radius:8px;padding:7px 14px;cursor:pointer;font:inherit}.tabs .on{background:var(--blue);color:#fff}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.two{grid-template-columns:1fr}.side{position:static;width:auto;display:flex;overflow-x:auto;padding:8px}.side button{width:auto;white-space:nowrap}.logo{display:none}.main{margin-left:0;padding:0 12px 40px}}
+.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:30;padding:16px}
+.modal.show{display:flex}.modal>div{background:#fff;border-radius:16px;padding:20px;width:min(560px,100%);max-height:90vh;overflow:auto}
+.modal h3{margin:0 0 12px}.f{display:grid;gap:10px}.f label{display:grid;gap:4px;color:var(--mute);font-size:12.5px}.f input,.f select,.f textarea{color:var(--ink);font-size:14px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:11px}
+.cal div{border-radius:8px;padding:5px;min-height:52px;background:#f4f7fb}.cal .h{background:none;min-height:0;text-align:center;color:var(--mute)}
+.cal .d{color:var(--mute);font-size:10px}
+.sch td,.sch th{text-align:center;padding:6px 4px}.sch td:first-child,.sch th:first-child{text-align:left}
+.sch select{padding:4px;font-size:12.5px;width:78px}
+.feed div{padding:7px 0;border-bottom:1px solid #f0f3f8}.feed small{color:var(--mute)}
+.alert{padding:9px 12px;border-radius:10px;margin-bottom:8px;background:#fff4e6;color:#9a5300}
+.alert.r{background:#ffecec;color:#a52a2a}
+.prog{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--mute);flex-wrap:wrap}
+.prog i{font-style:normal;padding:2px 8px;border-radius:10px;background:#eef2f9}.prog i.d{background:#d9f3e5;color:#166b40}.prog i.cur{background:#ffe9cc;color:#9a5300}.prog i.x{background:#ffdede;color:#a52a2a}
+.apv{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+svg text{font-size:11px;fill:#51607a}
+.hint{color:var(--mute);font-size:12.5px}
+.deny{padding:60px 20px;text-align:center;color:var(--mute)}
+@media print{.side,.top .who,.bar,.tabs,.btn{display:none!important}.main{margin:0}}
+</style>
+</head>
+<body>
+<nav class="side" id="side"></nav>
+<div class="main">
+  <div class="top"><h1 id="title"></h1>
+    <div class="who">登录身份：<select id="meSel"></select> <a href="index.html" style="color:var(--blue)">📱 员工手机端</a></div></div>
+  <div id="page"></div>
+</div>
+<div class="modal" id="modal"><div id="mBody"></div></div>
+<script src="store.js"></script>
+<script>
+const {pad,ymd,addDays,at,hm,dow,prevWork}=DB.util;
+const WK=['日','一','二','三','四','五','六'];
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $=id=>document.getElementById(id);
+let me=DB.emp(localStorage.getItem('hr_me'))||DB.emp('e12');
+const today=ymd(new Date());
+const ST={page:'summary',month:today.slice(0,7),dept:'',emp:'',from:addDays(today,-6),to:today,dtab:'raw',week:mondayOf(today),atab:'mine',rtype:'monthly',type:''};
+function mondayOf(d){const w=dow(d);return addDays(d,w===0?-6:1-w)}
+const isHR=()=>me.role==='hr', isMgr=()=>me.role!=='employee';
+const scope=()=>isHR()?DB.employees():DB.employees().filter(e=>e.managerId===me.id||e.id===me.id);
+const dates=(a,b)=>{const o=[];for(let d=a;d<=b;d=addDays(d,1))o.push(d);return o};
+const monthDates=m=>{const [y,mo]=m.split('-').map(Number);const n=new Date(y,mo,0).getDate();const last=m+'-'+pad(n);const e=last>today?today:last;return dates(m+'-01',e)};
+const depts=()=>[...new Set(DB.employees().map(e=>e.dept))];
+const fmtH=m=>(m/60).toFixed(1);
+const pct=x=>(x*100).toFixed(1)+'%';
+const chip=s=>`<span class="chip c-${s}">${s}</span>`;
+const nm=id=>{const e=DB.emp(id);return e?e.name:'—'};
+const av=e=>`<span class="av">${esc(e.name[0])}</span>`;
+const roleName={employee:'员工',manager:'主管',hr:'HR'};
+const time=d=>d?hm(d):'—';
+
+/* ---------- 弹窗/下载 ---------- */
+function openModal(h){$('mBody').innerHTML=h;$('modal').classList.add('show')}
+function closeModal(){$('modal').classList.remove('show')}
+$('modal').addEventListener('mousedown',e=>{if(e.target.id==='modal')closeModal()});
+function csv(name,head,rows){const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const t='﻿'+[head,...rows].map(r=>r.map(q).join(',')).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv;charset=utf-8'}));a.download=name+'.csv';a.click()}
+
+/* ---------- 图表（纯SVG） ---------- */
+function hbars(items,fmt,color){const W=420,rowH=26,max=Math.max(...items.map(i=>i[1]),0.0001);
+  return `<svg viewBox="0 0 ${W} ${items.length*rowH+4}" width="100%">`+items.map((it,i)=>{const w=Math.max(2,(it[1]/max)*(W-170));
+   return `<text x="0" y="${i*rowH+17}">${esc(it[0])}</text><rect x="100" y="${i*rowH+4}" width="${w}" height="16" rx="4" fill="${it[2]||color||'#2f8cf0'}"/><text x="${106+w}" y="${i*rowH+17}">${fmt(it[1])}</text>`}).join('')+'</svg>'}
+function vbars(items,fmt,color){const W=420,H=170,n=items.length,bw=W/n,max=Math.max(...items.map(i=>i[1]),0.0001);
+  return `<svg viewBox="0 0 ${W} ${H+24}" width="100%">`+items.map((it,i)=>{const h=(it[1]/max)*(H-24);
+   return `<rect x="${i*bw+bw*.2}" y="${H-h}" width="${bw*.6}" height="${h}" rx="4" fill="${color||'#2f8cf0'}"/><text x="${i*bw+bw/2}" y="${H-h-4}" text-anchor="middle">${fmt(it[1])}</text><text x="${i*bw+bw/2}" y="${H+16}" text-anchor="middle">${esc(it[0])}</text>`}).join('')+'</svg>'}
+function line(pts,fmt){const W=520,H=160,pad=26,n=pts.length;if(n<2)return '<p class="hint">数据不足</p>';
+  const lo=Math.min(...pts.map(p=>p[1]))-.05,hi=1,X=i=>pad+i*(W-pad*2)/(n-1),Y=v=>10+(1-(v-lo)/(hi-lo))*(H-20);
+  return `<svg viewBox="0 0 ${W} ${H+22}" width="100%"><polyline fill="none" stroke="#2f8cf0" stroke-width="2.5" points="${pts.map((p,i)=>X(i)+','+Y(p[1])).join(' ')}"/>`+
+   pts.map((p,i)=>`<circle cx="${X(i)}" cy="${Y(p[1])}" r="3" fill="#2f8cf0"><title>${p[0]} ${fmt(p[1])}</title></circle>`+(i%Math.ceil(n/8)===0?`<text x="${X(i)}" y="${H+16}" text-anchor="middle">${p[0].slice(5)}</text>`:'')).join('')+
+   `<text x="0" y="14">${fmt(hi)}</text><text x="0" y="${H-4}">${fmt(lo)}</text></svg>`}
+
+/* ---------- 导航 ---------- */
+const NAV=[['summary','📊','考勤总结'],['monitor','📡','实时监控'],['data','🗂️','考勤数据'],['schedule','📆','排班表'],['ot','⏰','加班管理'],['approve','✅','审批流程'],['assist','🤝','主管协助打卡'],['report','🧾','报表'],['analytics','📈','人力分析'],['settings','⚙️','设置']];
+function pendingCount(){return DB.requests().filter(q=>DB.canDecide(q,me)).length}
+function drawNav(){$('side').innerHTML='<div class="logo">🕘 HR 考勤后台</div>'+NAV.map(([k,i,t])=>`<button class="${ST.page===k?'on':''}" onclick="go('${k}')">${i} ${t}${k==='approve'&&pendingCount()?`<span class="n">${pendingCount()}</span>`:''}</button>`).join('')}
+function drawMe(){$('meSel').innerHTML=DB.employees().map(e=>`<option value="${e.id}" ${e.id===me.id?'selected':''}>${esc(e.name)}（${roleName[e.role]}）</option>`).join('')}
+$('meSel').onchange=e=>{me=DB.emp(e.target.value);localStorage.setItem('hr_me',me.id);ST.emp='';render()};
+let timer;
+function go(p){ST.page=p;render();scrollTo(0,0)}
+function render(){
+  DB.reload();me=DB.emp(me.id);drawNav();drawMe();
+  const t=NAV.find(n=>n[0]===ST.page);$('title').textContent=t[2];
+  if(!isMgr()){$('page').innerHTML=`<div class="card deny"><h3>你是普通员工，没有后台权限</h3>请在右上角"登录身份"换成主管（例如 Daniel Lim）或 HR（Shannie Lee）。<br><br><a href="index.html">回员工手机端</a></div>`;return}
+  $('page').innerHTML=P[ST.page]();
+  clearInterval(timer);if(ST.page==='monitor')timer=setInterval(()=>{if(!$('modal').classList.contains('show'))render()},10000);
+}
+window.addEventListener('storage',()=>{if(ST.page!=='schedule'&&!$('modal').classList.contains('show'))render()});
+
+/* 通用筛选条 */
+const empSel=()=>`<select onchange="ST.emp=this.value;render()"><option value="">全部员工</option>${scope().map(e=>`<option value="${e.id}" ${ST.emp===e.id?'selected':''}>${esc(e.name)}</option>`).join('')}</select>`;
+const deptSel=()=>isHR()?`<select onchange="ST.dept=this.value;render()"><option value="">全部部门</option>${depts().map(d=>`<option ${ST.dept===d?'selected':''}>${d}</option>`).join('')}</select>`:'';
+const monthIn=()=>`<input type="month" value="${ST.month}" max="${today.slice(0,7)}" onchange="ST.month=this.value||ST.month;render()">`;
+const list=()=>scope().filter(e=>(!ST.dept||e.dept===ST.dept)&&(!ST.emp||e.id===ST.emp));
+
+const P={};
+
+/* ===== 考勤总结 ===== */
+P.summary=()=>{
+  const ds=monthDates(ST.month),L=list(),rows=L.map(e=>({e,s:DB.stats(e.id,ds)}));
+  const tot=rows.reduce((a,r)=>{a.due+=r.s.due;a.present+=r.s.present;a.late+=r.s.late;a.absent+=r.s.absent;a.ot+=r.s.otOk;a.miss+=r.s.miss;return a},{due:0,present:0,late:0,absent:0,ot:0,miss:0});
+  return `<div class="bar">${monthIn()}${deptSel()}${empSel()}<span class="hint">点任意一行，查看这个人整月的日历</span></div>
+  <div class="kpis"><div class="kpi"><small>出勤率</small><b>${pct(tot.due?tot.present/tot.due:1)}</b></div><div class="kpi"><small>迟到次数</small><b>${tot.late}</b></div><div class="kpi"><small>缺勤天数</small><b>${tot.absent}</b></div><div class="kpi"><small>漏打卡</small><b>${tot.miss}</b></div><div class="kpi"><small>已批准加班(小时)</small><b>${fmtH(tot.ot)}</b></div></div>
+  <div class="card"><table><tr><th>员工</th><th>部门</th><th>应出勤(天)</th><th>实到</th><th>出勤率</th><th>迟到(次/分钟)</th><th>早退</th><th>缺勤</th><th>请假</th><th>漏打卡</th><th>总工时(h)</th><th>加班(h)</th></tr>`+
+  rows.map(({e,s})=>`<tr class="click" onclick="calModal('${e.id}')"><td>${av(e)}${esc(e.name)}</td><td>${e.dept}</td><td>${s.due}</td><td>${s.present}</td><td>${pct(s.rate)}</td><td>${s.late}/${s.lateMin}</td><td>${s.early}</td><td>${s.absent||'-'}</td><td>${s.leave||'-'}</td><td>${s.miss||'-'}</td><td>${fmtH(s.workMin)}</td><td>${fmtH(s.otOk)}</td></tr>`).join('')+`</table></div>`};
+function calModal(id){const e=DB.emp(id),ds=monthDates(ST.month),first=dow(ds[0]);
+  const cells=['日','一','二','三','四','五','六'].map(x=>`<div class="h">${x}</div>`).join('')+Array(first).fill('<div style="background:none"></div>').join('')+
+   ds.map(d=>{const x=DB.summary(id,d);const col={正常:'#d9f3e5',迟到:'#ffe9cc',早退:'#ffe9cc',迟到早退:'#ffe9cc',缺勤:'#ffdede',未到岗:'#ffdede',漏打卡:'#ffdede',请假:'#dcebff',上班中:'#d3f1f3',休息日出勤:'#eadcff'}[x.status]||'#f4f7fb';
+    return `<div style="background:${col}"><span class="d">${+d.slice(8)}</span><br>${x.status!=='休息'?x.status:''}<br><span class="d">${x.inT?time(x.inT):''}${x.outT?'-'+time(x.outT):''}</span></div>`}).join('');
+  openModal(`<h3>${esc(e.name)} · ${ST.month} 考勤日历</h3><div class="cal">${cells}</div><p style="text-align:right"><button class="btn g" onclick="closeModal()">关闭</button></p>`)}
+
+/* ===== 实时监控 ===== */
+P.monitor=()=>{
+  const L=scope().filter(e=>!ST.dept||e.dept===ST.dept),rows=L.map(e=>({e,s:DB.summary(e.id,today)})),cnt=k=>rows.filter(r=>r.s.status===k).length;
+  const due=rows.filter(r=>r.s.sh&&r.s.status!=='请假');
+  const alerts=[];
+  rows.forEach(({e,s})=>{
+    if(s.status==='未到岗')alerts.push(['r',`${e.name} 已过上班时间，还没打卡`]);
+    if(s.late)alerts.push(['',`${e.name} 迟到 ${s.late} 分钟`]);
+    s.recs.forEach(r=>{if(r.dist>100)alerts.push(['',`${e.name} 打卡位置离办公室 ${r.dist} 米（偏远）`]);if(!r.face&&r.source==='self')alerts.push(['',`${e.name} ${hm(new Date(r.t))} 的打卡没有通过人脸检测`]);if(r.source==='assist')alerts.push(['',`${e.name} 由 ${nm(r.byId)} 协助打卡：${esc(r.note)}`])})});
+  const feed=DB.records().filter(r=>L.some(e=>e.id===r.empId)).sort((a,b)=>a.t<b.t?1:-1).slice(0,12);
+  return `<div class="bar"><span class="hint">🟢 每10秒自动刷新 · 现在 ${hm(new Date())}</span>${deptSel()}</div>
+  <div class="kpis"><div class="kpi"><small>今日应到</small><b>${due.length}</b></div><div class="kpi"><small>已到岗</small><b>${rows.filter(r=>DB.PRESENT.includes(r.s.status)).length}</b></div><div class="kpi"><small>上班中</small><b>${cnt('上班中')}</b></div><div class="kpi"><small>迟到</small><b>${rows.filter(r=>r.s.late).length}</b></div><div class="kpi"><small>未到岗</small><b style="color:var(--red)">${cnt('未到岗')}</b></div><div class="kpi"><small>请假</small><b>${cnt('请假')}</b></div></div>
+  <div class="two"><div class="card"><h3>今日状态</h3><table><tr><th>员工</th><th>班次</th><th>状态</th><th>上班</th><th>下班</th><th>方式/距离</th></tr>`+
+  rows.map(({e,s})=>{const r=s.inR;return `<tr><td>${av(e)}${esc(e.name)}</td><td>${s.sh?s.sh.name+' '+s.sh.start:'休息'}</td><td>${chip(s.status)}${s.late?`<span class="tag w">迟${s.late}分</span>`:''}</td><td>${time(s.inT)}</td><td>${time(s.outT)}</td><td>${r?esc(r.method)+' · '+r.dist+'米':'—'}</td></tr>`}).join('')+`</table></div>
+  <div><div class="card"><h3>⚠️ 异常提醒（${alerts.length}）</h3>${alerts.length?alerts.slice(0,12).map(a=>`<div class="alert ${a[0]}">${esc(a[1]).replace(/&amp;/g,'&')}</div>`).join(''):'<p class="hint">今天一切正常 👍</p>'}</div>
+  <div class="card feed"><h3>最新打卡动态</h3>${feed.map(r=>`<div>${r.type==='in'?'🟢 上班':'🔴 下班'} <b>${esc(nm(r.empId))}</b> <small>${hm(new Date(r.t))} · ${ymd(new Date(r.t))===today?'今天':ymd(new Date(r.t))} · ${esc(r.method)}</small></div>`).join('')}</div></div></div>`};
+
+/* ===== 考勤数据 + 编辑 ===== */
+P.data=()=>{
+  const L=list(),ids=L.map(e=>e.id),ds=dates(ST.from,ST.to);
+  const bar=`<div class="tabs"><button class="${ST.dtab==='raw'?'on':''}" onclick="ST.dtab='raw';render()">原始打卡记录</button><button class="${ST.dtab==='daily'?'on':''}" onclick="ST.dtab='daily';render()">每日汇总</button><button class="${ST.dtab==='audit'?'on':''}" onclick="ST.dtab='audit';render()">修改日志</button></div>`;
+  const filt=`<div class="bar">从 <input type="date" value="${ST.from}" onchange="ST.from=this.value;render()"> 到 <input type="date" value="${ST.to}" onchange="ST.to=this.value;render()">${deptSel()}${empSel()}</div>`;
+  if(ST.dtab==='audit'){const a=DB.S().audit.filter(x=>true);return bar+`<div class="card"><h3>所有对考勤记录的修改都会留下痕迹</h3><table><tr><th>时间</th><th>操作人</th><th>动作</th><th>内容</th></tr>${a.map(x=>`<tr><td>${new Date(x.t).toLocaleString()}</td><td>${esc(nm(x.byId))}</td><td>${x.action}</td><td>${esc(x.detail)}</td></tr>`).join('')||'<tr><td colspan=4 class="hint">暂时没有修改记录</td></tr>'}</table></div>`}
+  if(ST.dtab==='daily'){const rows=[];ds.slice().reverse().forEach(d=>L.forEach(e=>{const s=DB.summary(e.id,d);if(s.status!=='休息'&&s.status!=='未开始')rows.push([d,e,s])}));
+    window._daily=rows.map(([d,e,s])=>[d,e.name,e.dept,s.sh?s.sh.name:'休息',s.status,time(s.inT),time(s.outT),s.late,s.early,fmtH(s.workMin),fmtH(s.otOk)]);
+    return bar+filt+`<div class="card"><div class="bar"><button class="btn g" onclick="csv('每日考勤汇总',['日期','员工','部门','班次','状态','上班','下班','迟到分','早退分','工时h','加班h'],window._daily)">⬇ 导出 Excel(CSV)</button><span class="hint">共 ${rows.length} 条</span></div><table><tr><th>日期</th><th>员工</th><th>班次</th><th>状态</th><th>上班</th><th>下班</th><th>工时(h)</th><th>加班(h)</th><th>备注</th></tr>`+
+     rows.slice(0,400).map(([d,e,s])=>`<tr><td>${d} 周${WK[dow(d)]}</td><td>${esc(e.name)}</td><td>${s.sh?s.sh.name:'—'}</td><td>${chip(s.status)}</td><td>${time(s.inT)}${s.late?`<span class="tag w">迟${s.late}</span>`:''}</td><td>${time(s.outT)}${s.early?`<span class="tag w">早${s.early}</span>`:''}</td><td>${fmtH(s.workMin)}</td><td>${s.otOk?fmtH(s.otOk):'-'}</td><td>${s.flags.map(f=>`<span class="tag">${f}</span>`).join('')}</td></tr>`).join('')+'</table></div>'}
+  const recs=DB.records().filter(r=>ids.includes(r.empId)&&ymd(new Date(r.t))>=ST.from&&ymd(new Date(r.t))<=ST.to).sort((a,b)=>a.t<b.t?1:-1);
+  window._raw=recs.map(r=>[new Date(r.t).toLocaleString(),nm(r.empId),r.type==='in'?'上班':'下班',r.method,r.dist,r.face?'是':'否',{self:'本人',assist:'主管协助',edit:'人工修改',fix:'补卡'}[r.source],nm(r.byId),r.note]);
+  return bar+filt+`<div class="card"><div class="bar"><button class="btn" onclick="recModal()">＋ 新增一条记录</button><button class="btn g" onclick="csv('打卡原始记录',['时间','员工','类型','方式','距离米','人脸','来源','操作人','备注'],window._raw)">⬇ 导出 Excel(CSV)</button><span class="hint">共 ${recs.length} 条 · 修改、删除都需要填写原因，并会记入"修改日志"</span></div>
+  <table><tr><th>时间</th><th>员工</th><th>类型</th><th>方式</th><th>距离</th><th>人脸</th><th>来源</th><th>备注</th><th></th></tr>`+
+  recs.slice(0,300).map(r=>`<tr><td>${new Date(r.t).toLocaleString()}</td><td>${esc(nm(r.empId))}</td><td>${r.type==='in'?'🟢上班':'🔴下班'}</td><td>${esc(r.method)}</td><td>${r.dist}米</td><td>${r.photo?`<img src="${r.photo}" width="30" style="border-radius:50%">`:(r.face?'✓':'—')}</td><td>${{self:'本人',assist:'<span class="tag w">主管协助</span>',edit:'<span class="tag w">人工修改</span>',fix:'<span class="tag">补卡</span>'}[r.source]}</td><td>${esc(r.note)}</td><td><button class="btn s g" onclick="recModal('${r.id}')">编辑</button> <button class="btn s r" onclick="delRec('${r.id}')">删除</button></td></tr>`).join('')+'</table></div>'};
+function recModal(id){const r=id?DB.records().find(x=>x.id===id):null,d=r?new Date(r.t):new Date();
+  openModal(`<h3>${r?'编辑打卡记录':'新增打卡记录'}</h3><div class="f">
+   <label>员工<select id="rEmp" ${r?'disabled':''}>${scope().map(e=>`<option value="${e.id}" ${r&&r.empId===e.id?'selected':''}>${esc(e.name)}</option>`).join('')}</select></label>
+   <label>类型<select id="rType"><option value="in" ${r&&r.type==='in'?'selected':''}>上班</option><option value="out" ${r&&r.type==='out'?'selected':''}>下班</option></select></label>
+   <label>时间<input type="datetime-local" id="rTime" value="${ymd(d)}T${hm(d)}"></label>
+   <label>原因（必填，会记录下来）<input id="rWhy" placeholder="例如：员工忘记打卡，已核实"></label></div>
+   <p style="text-align:right"><button class="btn g" onclick="closeModal()">取消</button> <button class="btn" onclick="saveRec('${id||''}')">保存</button></p>`)}
+function saveRec(id){const why=$('rWhy').value.trim();if(!why)return alert('请填写原因');const t=new Date($('rTime').value);if(isNaN(t))return alert('时间不对');
+  if(id)DB.editRecord(id,{type:$('rType').value,t},me.id,why);else DB.addRecord($('rEmp').value,$('rType').value,t,me.id,why,'edit');closeModal();render()}
+function delRec(id){const why=prompt('为什么要删除这条记录？（必填）');if(!why)return;DB.deleteRecord(id,me.id,why);render()}
+
+/* ===== 排班表 ===== */
+P.schedule=()=>{
+  const days=dates(ST.week,addDays(ST.week,6)),L=scope().filter(e=>!ST.dept||e.dept===ST.dept),opts=(sel)=>`<option value="OFF" ${sel==='OFF'?'selected':''}>休息</option>`+DB.shifts().map(s=>`<option value="${s.id}" ${sel===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
+  const byDept={};L.forEach(e=>(byDept[e.dept]=byDept[e.dept]||[]).push(e));
+  return `<div class="bar"><button class="btn g" onclick="ST.week=addDays(ST.week,-7);render()">‹ 上一周</button><b>${ST.week} ~ ${addDays(ST.week,6)}</b><button class="btn g" onclick="ST.week=addDays(ST.week,7);render()">下一周 ›</button><button class="btn g" onclick="ST.week=mondayOf(today);render()">本周</button>${deptSel()}<span class="hint">选择后自动保存。蓝色底 = 与默认不同（手动调整过）</span></div>
+  <div class="card"><table class="sch"><tr><th>员工</th>${days.map(d=>`<th>周${WK[dow(d)]}<br><small>${d.slice(5)}</small></th>`).join('')}</tr>`+
+  Object.entries(byDept).map(([dp,es])=>`<tr><td colspan="8" style="background:#f4f7fb;font-weight:600;text-align:left">${dp} <span class="hint">整周套用：</span><select onchange="applyDept('${dp}',this.value);this.value=''"><option value="">选择班次…</option>${DB.shifts().map(s=>`<option value="${s.id}">${esc(s.name)} (周一至周五)</option>`).join('')}</select></td></tr>`+
+   es.map(e=>`<tr><td>${av(e)}${esc(e.name)}</td>${days.map(d=>{const c=DB.shiftCode(e.id,d),def=dow(d)%6===0?'OFF':e.shiftId,sh=DB.shifts().find(s=>s.id===c);return `<td><select style="${c!==def?'background:#e0efff;':''}${sh?'border-left:4px solid '+sh.color:''}" onchange="DB.setShift('${e.id}','${d}',this.value)">${opts(c)}</select></td>`}).join('')}</tr>`).join('')).join('')+`</table></div>
+  ${isHR()?`<div class="card"><h3>班次设定</h3><table><tr><th>名称</th><th>上班</th><th>下班</th><th>颜色</th></tr>${DB.shifts().map(s=>`<tr><td><input value="${esc(s.name)}" onchange="editShift('${s.id}','name',this.value)" size="8"></td><td><input type="time" value="${s.start}" onchange="editShift('${s.id}','start',this.value)"></td><td><input type="time" value="${s.end}" onchange="editShift('${s.id}','end',this.value)"></td><td><input type="color" value="${s.color}" onchange="editShift('${s.id}','color',this.value)"></td></tr>`).join('')}</table><p><button class="btn" onclick="newShift()">＋ 新增班次</button> <span class="hint">修改班次时间会影响迟到/早退的计算</span></p></div>`:''}`};
+function applyDept(dp,code){if(!code)return;DB.employees().filter(e=>e.dept===dp&&scope().includes(e)).forEach(e=>addDays&&dates(ST.week,addDays(ST.week,4)).forEach(d=>DB.setShift(e.id,d,code)));render()}
+function editShift(id,k,v){const s=DB.shifts().find(x=>x.id===id);s[k]=v;DB.save()}
+function newShift(){const id='S'+(DB.shifts().length+1);DB.shifts().push({id,name:'新班次',start:'10:00',end:'19:00',color:'#e5484d'});DB.save();render()}
+
+/* ===== 加班管理 ===== */
+P.ot=()=>{
+  const ds=monthDates(ST.month),L=list(),mult=DB.cfg().otMult;
+  const rows=L.map(e=>({e,s:DB.stats(e.id,ds)})),pend=DB.requests().filter(q=>q.type==='overtime'&&q.status!=='ok'&&q.status!=='no'&&L.some(e=>e.id===q.empId));
+  const un=[];L.forEach(e=>ds.forEach(d=>{const s=DB.summary(e.id,d);if(s.otRaw>0&&s.otOk===0&&!DB.requests().some(q=>q.type==='overtime'&&q.empId===e.id&&q.date===d&&q.status!=='no'))un.push([e,d,s])}));
+  const cost=rows.reduce((a,r)=>a+r.s.otOk/60*r.e.rate*mult,0);
+  return `<div class="bar">${monthIn()}${deptSel()}${empSel()}</div>
+  <div class="kpis"><div class="kpi"><small>已批准加班(小时)</small><b>${fmtH(rows.reduce((a,r)=>a+r.s.otOk,0))}</b></div><div class="kpi"><small>系统检测到的超时(小时)</small><b>${fmtH(rows.reduce((a,r)=>a+r.s.otRaw,0))}</b></div><div class="kpi"><small>待审批加班单</small><b>${pend.length}</b></div><div class="kpi"><small>加班费估算(RM)</small><b>${cost.toFixed(0)}</b></div></div>
+  ${pend.length?`<div class="card"><h3>待审批的加班申请</h3>${pend.map(apvCard).join('')}</div>`:''}
+  <div class="card"><h3>每人加班统计（加班费按时薪 × ${mult} 倍估算）</h3><table><tr><th>员工</th><th>系统检测超时(h)</th><th>已批准(h)</th><th>未批准(h)</th><th>估算加班费(RM)</th></tr>${rows.map(({e,s})=>`<tr><td>${av(e)}${esc(e.name)}</td><td>${fmtH(s.otRaw)}</td><td>${fmtH(s.otOk)}</td><td>${s.otRaw-s.otOk>0?`<b style="color:var(--orange)">${fmtH(s.otRaw-s.otOk)}</b>`:'-'}</td><td>${(s.otOk/60*e.rate*mult).toFixed(2)}</td></tr>`).join('')}</table></div>
+  <div class="card"><h3>⚠️ 超时下班，但没提交加班申请（${un.length}）</h3><table><tr><th>日期</th><th>员工</th><th>下班时间</th><th>超时</th></tr>${un.slice(-15).reverse().map(([e,d,s])=>`<tr><td>${d}</td><td>${esc(e.name)}</td><td>${time(s.outT)}</td><td>${fmtH(s.otRaw)} 小时</td></tr>`).join('')||'<tr><td colspan=4 class="hint">没有</td></tr>'}</table></div>`};
+
+/* ===== 审批 ===== */
+const TYPE={leave:'🏖️ 请假',overtime:'⏰ 加班',fix:'📝 补卡'};
+function detail(q){if(q.type==='leave')return `${q.kind} ${q.date}${q.to!==q.date?' ~ '+q.to:''}（${q.days}天）`;if(q.type==='overtime')return `${q.date} 加班 ${q.hours} 小时`;return `${q.date} 补${q.ptype==='in'?'上班':'下班'}卡 ${q.time}`}
+function prog(q){const steps=q.type==='overtime'?['pm']:['pm','hr'],e=DB.emp(q.empId);const order=['提交'].concat(steps.map(s=>s==='pm'?'主管':'HR'),['完成']);
+  const cur=q.status==='pm'?1:q.status==='hr'?(steps.length>1?2:1):order.length-1;
+  return `<div class="prog">${order.map((o,i)=>`<i class="${q.status==='no'&&i===(q.history.length?q.history.length:1)?'x':q.status==='ok'||i<cur?'d':i===cur?'cur':''}">${o}</i>`).join('→')} ${q.status==='no'?'<i class="x">已拒绝</i>':''}</div>`}
+function apvCard(q){const e=DB.emp(q.empId),can=DB.canDecide(q,me);
+  return `<div class="apv"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><b>${TYPE[q.type]}</b> · ${av(e)}${esc(e.name)} <span class="tag">${e.dept}</span><br><span>${esc(detail(q))}</span><br><span class="hint">原因：${esc(q.reason)} · 提交于 ${new Date(q.created).toLocaleDateString()}</span></div><div style="text-align:right">${chip(q.status)} <span class="hint">${DB.stepName[q.status]}</span></div></div>
+  <div style="margin-top:8px" class="prog">${prog(q)}</div>${q.history.map(h=>`<div class="hint">${h.act==='ok'?'✅':'❌'} ${esc(nm(h.by))} ${h.act==='ok'?'批准':'拒绝'}${h.comment?'：'+esc(h.comment):''}</div>`).join('')}
+  ${can?`<div style="margin-top:8px"><button class="btn ok s" onclick="decide('${q.id}',true)">批准</button> <button class="btn r s" onclick="decide('${q.id}',false)">拒绝</button></div>`:''}</div>`}
+function decide(id,ok){let c='';if(!ok){c=prompt('拒绝原因（可不填）')||''}DB.decide(id,me.id,ok,c);render()}
+P.approve=()=>{
+  const mine=DB.requests().filter(q=>DB.canDecide(q,me)),all=DB.requests().filter(q=>scope().some(e=>e.id===q.empId));
+  const show=ST.atab==='mine'?mine:all;
+  return `<div class="tabs"><button class="${ST.atab==='mine'?'on':''}" onclick="ST.atab='mine';render()">待我审批 (${mine.length})</button><button class="${ST.atab==='all'?'on':''}" onclick="ST.atab='all';render()">全部申请</button></div>
+  <p class="hint">审批规则：加班 → 主管批准即可；请假、补卡 → 主管批准后，再交 HR 终审。主管自己的申请直接交 HR。补卡批准后，系统会自动补上那条打卡记录。</p>
+  <div class="card">${show.map(apvCard).join('')||'<p class="hint">没有需要处理的申请 🎉</p>'}</div>`};
+
+/* ===== 主管协助打卡 ===== */
+P.assist=()=>{
+  const now=new Date(),ex=DB.records().filter(r=>r.source==='assist').sort((a,b)=>a.t<b.t?1:-1).slice(0,10);
+  const team=scope().filter(e=>e.id!==me.id);
+  return `<div class="two"><div class="card"><h3>替员工打卡</h3><p class="hint">员工手机没电、忘带手机、定位出问题时，由主管代打。记录会标明"主管协助"并写明原因，HR 可以追溯。</p><div class="f">
+  <label>员工<select id="aEmp">${team.map(e=>`<option value="${e.id}">${esc(e.name)} · ${e.dept}（今天${DB.summary(e.id,today).status}）</option>`).join('')}</select></label>
+  <label>类型<select id="aType"><option value="in">上班</option><option value="out">下班</option></select></label>
+  <label>时间<input type="datetime-local" id="aTime" value="${ymd(now)}T${hm(now)}"></label>
+  <label>原因（必填）<input id="aWhy" placeholder="例如：手机没电"></label>
+  <button class="btn" onclick="doAssist()">确认协助打卡</button></div></div>
+  <div class="card"><h3>最近的协助打卡</h3>${ex.map(r=>`<div style="padding:8px 0;border-bottom:1px solid #f0f3f8">${r.type==='in'?'🟢':'🔴'} <b>${esc(nm(r.empId))}</b> ${new Date(r.t).toLocaleString()}<br><span class="hint">由 ${esc(nm(r.byId))} 协助 · ${esc(r.note)}</span></div>`).join('')||'<p class="hint">暂无</p>'}</div></div>`};
+function doAssist(){const why=$('aWhy').value.trim(),t=new Date($('aTime').value);if(!why)return alert('请填写原因');if(isNaN(t))return alert('时间不对');if(!$('aEmp').value)return alert('没有可协助的员工');
+  DB.addRecord($('aEmp').value,$('aType').value,t,me.id,why,'assist');alert('已协助打卡');render()}
+
+/* ===== 报表 ===== */
+function buildReport(){
+  const ds=monthDates(ST.month),L=list(),t=ST.rtype;
+  if(t==='monthly')return {name:'月度考勤总表',head:['员工','部门','应出勤','实到','出勤率','迟到次','迟到分钟','早退次','缺勤','请假','漏打卡','总工时h','加班h'],rows:L.map(e=>{const s=DB.stats(e.id,ds);return [e.name,e.dept,s.due,s.present,pct(s.rate),s.late,s.lateMin,s.early,s.absent,s.leave,s.miss,fmtH(s.workMin),fmtH(s.otOk)]})};
+  if(t==='late'){const rows=[];L.forEach(e=>ds.forEach(d=>{const s=DB.summary(e.id,d);if(s.late||s.early)rows.push([d,e.name,e.dept,s.sh.name+' '+s.sh.start+'-'+s.sh.end,time(s.inT),time(s.outT),s.late,s.early])}));return {name:'迟到早退明细',head:['日期','员工','部门','班次','上班','下班','迟到分','早退分'],rows}}
+  if(t==='ot'){return {name:'加班报表',head:['员工','部门','时薪RM','检测超时h','批准加班h','倍率','加班费RM'],rows:L.map(e=>{const s=DB.stats(e.id,ds),m=DB.cfg().otMult;return [e.name,e.dept,e.rate,fmtH(s.otRaw),fmtH(s.otOk),m,(s.otOk/60*e.rate*m).toFixed(2)]})}}
+  const rows=[];L.forEach(e=>ds.forEach(d=>{const s=DB.summary(e.id,d);if(['缺勤','请假','漏打卡','未到岗'].includes(s.status))rows.push([d,e.name,e.dept,s.status,s.leave?s.leave.kind:'',s.flags.join('/')])}));return {name:'缺勤请假漏卡明细',head:['日期','员工','部门','状态','假别','备注'],rows}}
+P.report=()=>{const R=buildReport();window._rep=R;
+  return `<div class="bar"><select onchange="ST.rtype=this.value;render()">${[['monthly','月度考勤总表'],['late','迟到早退明细'],['ot','加班报表'],['absent','缺勤/请假/漏卡明细']].map(([k,n])=>`<option value="${k}" ${ST.rtype===k?'selected':''}>${n}</option>`).join('')}</select>${monthIn()}${deptSel()}${empSel()}<button class="btn" onclick="csv(window._rep.name+'_'+ST.month,window._rep.head,window._rep.rows)">⬇ 导出 Excel(CSV)</button><button class="btn g" onclick="print()">🖨 打印</button></div>
+  <div class="card"><h3>${R.name} · ${ST.month}</h3><table><tr>${R.head.map(h=>`<th>${h}</th>`).join('')}</tr>${R.rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')||`<tr><td class="hint">这个月没有符合的记录</td></tr>`}</table></div>`};
+
+/* ===== 人力分析 ===== */
+P.analytics=()=>{
+  const ds=monthDates(ST.month),L=scope().filter(e=>!ST.dept||e.dept===ST.dept),S=L.map(e=>({e,s:DB.stats(e.id,ds)}));
+  const sum=k=>S.reduce((a,r)=>a+r.s[k],0),due=sum('due'),mult=DB.cfg().otMult;
+  const byDept=depts().filter(d=>L.some(e=>e.dept===d)).map(d=>{const r=S.filter(x=>x.e.dept===d);const du=r.reduce((a,x)=>a+x.s.due,0);return {d,n:r.length,rate:du?r.reduce((a,x)=>a+x.s.present,0)/du:1,ot:r.reduce((a,x)=>a+x.s.otOk,0)/60,cost:r.reduce((a,x)=>a+x.s.otOk/60*x.e.rate*mult,0),late:r.reduce((a,x)=>a+x.s.late,0)}});
+  const trend=ds.filter(d=>dow(d)%6!==0).map(d=>{let p=0,u=0;L.forEach(e=>{const s=DB.summary(e.id,d);if(s.sh&&!['请假','未开始','未上班'].includes(s.status)){u++;if(DB.PRESENT.includes(s.status))p++}});return [d,u?p/u:1]});
+  const wd=[0,0,0,0,0,0,0];S.forEach(({e})=>ds.forEach(d=>{if(DB.summary(e.id,d).late)wd[dow(d)]++}));
+  const topLate=[...S].sort((a,b)=>b.s.lateMin-a.s.lateMin).slice(0,5),topOT=[...S].sort((a,b)=>b.s.otOk-a.s.otOk).slice(0,5);
+  const worst=[...byDept].sort((a,b)=>a.rate-b.rate)[0],mostOT=[...byDept].sort((a,b)=>b.ot-a.ot)[0],lateDay=wd.indexOf(Math.max(...wd));
+  const risk=S.filter(r=>r.s.otOk/60>20);
+  const ins=[];
+  if(worst)ins.push(`出勤率最低的部门是 <b>${worst.d}</b>（${pct(worst.rate)}）。`);
+  if(mostOT&&mostOT.ot>0)ins.push(`加班最多的是 <b>${mostOT.d}</b>，合计 ${mostOT.ot.toFixed(1)} 小时，加班费约 RM ${mostOT.cost.toFixed(0)}。`);
+  if(Math.max(...wd)>0)ins.push(`迟到最容易发生在 <b>周${WK[lateDay]}</b>（${wd[lateDay]} 次）。`);
+  if(risk.length)ins.push(`⚠️ ${risk.map(r=>esc(r.e.name)).join('、')} 本月加班超过 20 小时，注意过劳风险。`);
+  if(topLate[0]&&topLate[0].s.late>=3)ins.push(`<b>${esc(topLate[0].e.name)}</b> 本月迟到 ${topLate[0].s.late} 次，建议面谈了解原因。`);
+  return `<div class="bar">${monthIn()}${deptSel()}</div>
+  <div class="kpis"><div class="kpi"><small>在职人数</small><b>${L.length}</b></div><div class="kpi"><small>平均出勤率</small><b>${pct(due?sum('present')/due:1)}</b></div><div class="kpi"><small>人均日工时(h)</small><b>${sum('present')?(sum('workMin')/60/sum('present')).toFixed(1):'-'}</b></div><div class="kpi"><small>人均加班(h)</small><b>${L.length?(sum('otOk')/60/L.length).toFixed(1):'-'}</b></div><div class="kpi"><small>迟到率</small><b>${pct(sum('present')?sum('late')/sum('present'):0)}</b></div></div>
+  <div class="card"><h3>💡 自动洞察</h3>${ins.map(x=>`<div class="alert" style="background:#eef6ff;color:#1a4b86">${x}</div>`).join('')||'<p class="hint">数据还不够</p>'}</div>
+  <div class="two"><div class="card"><h3>各部门出勤率</h3>${hbars(byDept.map(x=>[x.d,x.rate]),pct,'#1fa760')}</div><div class="card"><h3>各部门加班小时</h3>${hbars(byDept.map(x=>[x.d,x.ot]),v=>v.toFixed(1)+'h','#a45be8')}</div></div>
+  <div class="card"><h3>每日出勤率走势</h3>${line(trend,pct)}</div>
+  <div class="two"><div class="card"><h3>一周中哪天最容易迟到</h3>${vbars([1,2,3,4,5].map(i=>['周'+WK[i],wd[i]]),v=>v,'#f08a1f')}</div>
+  <div class="card"><h3>各部门人数 / 加班费(RM)</h3><table><tr><th>部门</th><th>人数</th><th>迟到次</th><th>加班费</th></tr>${byDept.map(x=>`<tr><td>${x.d}</td><td>${x.n}</td><td>${x.late}</td><td>${x.cost.toFixed(0)}</td></tr>`).join('')}</table></div></div>
+  <div class="two"><div class="card"><h3>迟到时间最长 Top5</h3>${hbars(topLate.map(r=>[r.e.name.split(' ')[0],r.s.lateMin]),v=>v+'分','#f08a1f')}</div><div class="card"><h3>加班最多 Top5</h3>${hbars(topOT.map(r=>[r.e.name.split(' ')[0],r.s.otOk/60]),v=>v.toFixed(1)+'h','#a45be8')}</div></div>`};
+
+/* ===== 设置 ===== */
+P.settings=()=>{const o=DB.office(),c=DB.cfg();
+  return `<div class="two"><div class="card"><h3>办公室打卡范围</h3><p class="hint">员工只有在这个范围内，才能用手机定位打卡。</p><div class="f">
+  <label>名称<input id="oName" value="${esc(o?o.name:'KL Office')}"></label><label>纬度<input id="oLat" value="${o?o.lat:''}"></label><label>经度<input id="oLng" value="${o?o.lng:''}"></label><label>多少米内可打卡<input id="oRad" type="number" value="${o?o.radius:150}"></label>
+  <button class="btn g" onclick="useHere()">📍 用我现在的位置</button><button class="btn" onclick="saveOffice()">保存</button></div></div>
+  <div class="card"><h3>考勤规则</h3><div class="f"><label>迟到/早退宽限（分钟）<input id="gG" type="number" value="${c.grace}"></label><label>超过多少分钟才算加班<input id="gO" type="number" value="${c.otMin}"></label><label>加班费倍率<input id="gM" type="number" step="0.1" value="${c.otMult}"></label><button class="btn" onclick="saveCfg()">保存</button></div>
+  <hr style="border:0;border-top:1px solid var(--line);margin:18px 0"><h3>演示数据</h3><p class="hint">现在用的是示范员工和示范打卡。清空后会重新生成示范数据。</p><button class="btn r" onclick="if(confirm('确定重置所有数据为示范数据吗？你新增的记录会消失。')){DB.reset();render()}">重置示范数据</button></div></div>`};
+function useHere(){navigator.geolocation.getCurrentPosition(p=>{$('oLat').value=p.coords.latitude;$('oLng').value=p.coords.longitude},e=>alert('拿不到位置，请允许浏览器定位'))}
+function saveOffice(){const lat=parseFloat($('oLat').value),lng=parseFloat($('oLng').value);if(isNaN(lat)||isNaN(lng))return alert('请填写位置，或点"用我现在的位置"');DB.setOffice({name:$('oName').value||'办公室',lat,lng,radius:Math.max(30,+$('oRad').value||150)});alert('已保存');render()}
+function saveCfg(){const c=DB.cfg();c.grace=+$('gG').value||0;c.otMin=+$('gO').value||0;c.otMult=+$('gM').value||1.5;DB.save();alert('已保存');render()}
+
+render();
+</script>
+</body>
+</html>
