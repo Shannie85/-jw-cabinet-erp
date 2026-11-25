@@ -1,0 +1,34 @@
+<title>考勤系统演示</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 入口页：两张大卡片，分别进入员工手机端和主管后台 */
+:root{--bg:#f4f7fb;--fg:#1d2433;--mute:#6b7488;--card:#ffffff;--line:#e3e9f2;--blue:#2f8cf0;--orange:#ff8a1f}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0f1521;--fg:#e8edf6;--mute:#93a0b8;--card:#18202f;--line:#27324a;--blue:#5aa5ff;--orange:#ff9d42;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1521;--fg:#e8edf6;--mute:#93a0b8;--card:#18202f;--line:#27324a;--blue:#5aa5ff;--orange:#ff9d42;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,Roboto,sans-serif;padding-block:40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:720px;margin:0 auto;display:grid;gap:20px}
+h1{margin:0;font-size:1.7rem;text-wrap:balance}
+p{margin:0;color:var(--mute);line-height:1.6}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+a.card{display:grid;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;color:var(--fg);text-decoration:none;min-width:0}
+a.card:hover,a.card:focus-visible{border-color:var(--blue);outline:none}
+a.card b{font-size:1.15rem}
+a.card span{color:var(--mute);font-size:.92rem;line-height:1.55}
+a.card em{font-style:normal;color:var(--blue);font-weight:600;font-size:.92rem}
+ol{margin:0;padding-left:1.2em;color:var(--mute);line-height:1.8}
+.note{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.note h2{margin:0 0 8px;font-size:1rem}
+</style>
+<main>
+  <div><h1>考勤系统演示</h1><p>里面是 13 位示范员工和一个月的示范打卡，你随便点、随便改都不会影响真实数据。</p></div>
+  <div class="cards">
+    <a class="card" href="index.html"><b>📱 员工手机端</b><span>打卡、看记录、我的排班、请假、加班、补卡。建议用手机打开。</span><em>进入 →</em></a>
+    <a class="card" href="hr.html"><b>🖥️ 主管 / HR 后台</b><span>考勤总结、实时监控、排班、审批、报表、人力分析等 10 个模块。建议用电脑打开。</span><em>进入 →</em></a>
+  </div>
+  <div class="note"><h2>建议这样试一遍</h2>
+    <ol><li>先进<b>员工手机端</b> → 设置 → 打开<b>演示模式</b> → 回首页点橙色按钮打卡。</li>
+    <li>再点「补卡申请」或「请假」，提交一张申请。</li>
+    <li>进<b>后台</b>，右上角身份选 Daniel Lim（主管）或 Shannie Lee（HR），去「审批流程」批准它。</li>
+    <li>在后台看「实时监控」「考勤总结」「人力分析」里的数字有没有变化。</li></ol></div>
+  <p>说明：数据只存在你这个浏览器里。WiFi / NFC 打卡需要以后做成手机 App。</p>
+</main>

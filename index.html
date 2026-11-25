@@ -122,7 +122,8 @@ body{margin:0;background:#dfe6f0;font-family:-apple-system,"PingFang SC","Micros
     <h2>设置</h2>
     <div class="set"><b>我是谁（演示用）</b><p>真正使用时，每个人用自己的账号登录。现在为了演示，可以在这里切换身份。</p><select id="meSel" onchange="switchMe(this.value)"></select></div>
     <div class="set"><b>办公室位置</b><p id="offInfo"></p><button class="btn b w" onclick="setOffice()">把我现在的位置设为办公室</button></div>
-    <div class="set"><b>演示数据</b><p>想重来的话，可以把所有数据重置为示范数据。</p><button class="btn w" style="background:var(--red)" onclick="if(confirm('确定重置吗？你自己新增的打卡会消失。')){DB.reset();render();toast('已重置','')}">重置示范数据</button></div>
+    <div class="set"><b>演示模式</b><p>开启后，打卡时不需要定位和摄像头（在预览窗口里试用时请打开）。真正使用时请关闭。</p><button class="btn b w" id="demoBtn" onclick="toggleDemo()"></button></div>
+    <div class="set"><b>演示数据</b><p>想重来的话，可以把所有数据重置为示范数据。</p><button class="btn w" style="background:var(--red)" id="resetBtn" onclick="resetDemo()">重置示范数据</button></div>
   </section>
 
   <nav class="nav">
@@ -188,7 +189,10 @@ const TYPE={leave:'🏖️ 请假',overtime:'⏰ 加班',fix:'📝 补卡'};
 function detail(q){if(q.type==='leave')return `${q.kind} ${q.date}${q.to!==q.date?' ~ '+q.to:''}（${q.days}天）`;if(q.type==='overtime')return `${q.date} 加班${q.hours}小时`;return `${q.date} 补${q.ptype==='in'?'上班':'下班'}卡 ${q.time}`}
 function renderReq(){const L=DB.requests().filter(q=>q.empId===me.id);
   $('reqList').innerHTML=L.map(q=>`<div class="card"><div class="hd"><span>${TYPE[q.type]}</span><span class="chip c-${q.status}">${DB.stepName[q.status]}</span></div>${esc(detail(q))}<span class="sub">原因：${esc(q.reason)}</span>${q.history.map(h=>`<span class="sub">${h.act==='ok'?'✅':'❌'} ${esc(DB.emp(h.by).name)} ${h.act==='ok'?'批准':'拒绝'}${h.comment?'：'+esc(h.comment):''}</span>`).join('')}</div>`).join('')||'<p style="color:#7b8496">还没有申请</p>'}
-function renderSet(){$('meSel').innerHTML=DB.employees().map(e=>`<option value="${e.id}" ${e.id===me.id?'selected':''}>${esc(e.name)}（${esc(e.dept)}）</option>`).join('');
+const isDemo=()=>localStorage.getItem('hr_demo')==='1';
+function toggleDemo(){localStorage.setItem('hr_demo',isDemo()?'0':'1');renderSet();toast(isDemo()?'演示模式已开启':'演示模式已关闭','')}
+let rs=0;function resetDemo(){if(!rs){rs=1;$('resetBtn').textContent='再点一次确认重置';setTimeout(()=>{rs=0;$('resetBtn').textContent='重置示范数据'},3500);return}DB.reset();rs=0;$('resetBtn').textContent='重置示范数据';render();toast('已重置','')}
+function renderSet(){$('demoBtn').textContent=isDemo()?'演示模式：已开启（点此关闭）':'演示模式：已关闭（点此开启）';$('meSel').innerHTML=DB.employees().map(e=>`<option value="${e.id}" ${e.id===me.id?'selected':''}>${esc(e.name)}（${esc(e.dept)}）</option>`).join('');
   const o=DB.office();$('offInfo').textContent=o?`${o.name}，${o.radius}米内可打卡`:'还没设定。第一次打卡时，系统也会问你。'}
 
 /* ---------- 申请表单 ---------- */
@@ -215,18 +219,19 @@ async function clock(method){
   try{
     const s0=DB.summary(me.id,ymd(new Date()));
     if(s0.status==='请假')throw new Error('你今天请假，不需要打卡');
-    $('mainLbl').textContent='正在定位…';
-    const pos=await getPos();
-    if(!DB.office()){
-      if(confirm('还没设定办公室。把你现在的位置当作办公室吗？'))DB.setOffice({name:'KL Office',lat:pos.latitude,lng:pos.longitude,radius:150});
-      else throw new Error('请先到「设置」设定办公室位置');}
-    const o=DB.office(),m=dist(pos.latitude,pos.longitude,o.lat,o.lng);
-    if(m>o.radius)throw new Error(`你离${o.name}还有约${Math.round(m)}米，需要在${o.radius}米内才能打卡`);
-    const photo=await selfie();if(photo===null)throw new Error('已取消打卡');
+    let m=0,photo,o=DB.office()||{name:'KL Office',radius:150};
+    if(isDemo()){m=20+Math.floor(Math.random()*60);photo={img:null,face:false}}
+    else{
+      $('mainLbl').textContent='正在定位…';
+      const pos=await getPos();
+      if(!DB.office()){o={name:'KL Office',lat:pos.latitude,lng:pos.longitude,radius:150};DB.setOffice(o)}
+      m=dist(pos.latitude,pos.longitude,o.lat,o.lng);
+      if(m>o.radius)throw new Error(`你离${o.name}还有约${Math.round(m)}米，需要在${o.radius}米内才能打卡`);
+      photo=await selfie();if(photo===null)throw new Error('已取消打卡');}
     const type=DB.nextType(me.id);
     DB.punch(me.id,type,{method,dist:Math.round(m),face:photo.face,photo:photo.img});
     render();toast(`${me.name} ${type==='in'?'上班打卡成功':'下班打卡成功'}`,`${photo.face?'人脸已验证':'已拍照记录'} · ${o.name}`);
-  }catch(e){toast('打卡没成功',e.message,true);render()}
+  }catch(e){toast('打卡没成功',e.message+(/定位|摄像头/.test(e.message)?'。可到「设置」打开演示模式':''),true);render()}
   finally{busy=false}}
 let stream,camRes;
 async function selfie(){
