@@ -1,6 +1,6 @@
 {
- "name": "JW Attendance Record",
- "short_name": "JW Attendance",
+ "name": "JW Attendant",
+ "short_name": "JW Attendant",
  "description": "JW Cabinet",
  "start_url": "/",
  "scope": "/",
