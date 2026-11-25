@@ -145,7 +145,7 @@ async function changeMyPassword(pw){const r=await sb.auth.updateUser({password:p
 /* ---------- 登录 ---------- */
 const CSS=`#loginBox{position:fixed;inset:0;background:linear-gradient(180deg,#2f8cf0,#6bb6ff 60%,#f4f7fb);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,Roboto,sans-serif}
 #loginBox form{background:#fff;border-radius:20px;padding:26px 22px;width:min(380px,100%);box-shadow:0 20px 50px #0003;display:grid;gap:12px;color:#1d2433}
-#loginBox h2{margin:0;font-size:22px}#loginBox p{margin:0;color:#7b8496;font-size:13px}
+#loginBox .bn{text-align:center;font-weight:700;font-size:15px;letter-spacing:.6px;color:#2f8cf0}#loginBox h2{margin:0;font-size:22px}#loginBox p{margin:0;color:#7b8496;font-size:13px}
 #loginBox label{display:grid;gap:4px;font-size:13px;color:#7b8496}
 #loginBox input{font:inherit;font-size:16px;padding:12px;border:1px solid #d8dfeb;border-radius:10px;color:#1d2433}
 #loginBox button{border:0;border-radius:12px;padding:13px;font-size:16px;font-weight:600;color:#fff;background:#2f8cf0;cursor:pointer}
@@ -155,7 +155,7 @@ function loginScreen(setup){return new Promise(resolve=>{
   const box=document.createElement('div');box.id='loginBox';
   const st=document.createElement('style');st.textContent=CSS;document.head.appendChild(st);
   let mode=setup?'setup':'login';
-  const draw=()=>{box.innerHTML=`<form id="lf"><h2>${mode==='setup'?'首次设置：创建管理员':'考勤系统登录'}</h2>
+  const draw=()=>{box.innerHTML=`<form id="lf"><div class="bn">JW Attendance Record</div><h2>${mode==='setup'?'首次设置：创建管理员':'考勤系统登录'}</h2>
    <p>${mode==='setup'?'这是第一次使用。请输入设置码，并创建你自己的管理员（HR）账号。':'请用公司给你的邮箱和密码登录。'}</p>
    ${mode==='setup'?'<label>设置码<input id="lCode" autocomplete="off"></label><label>你的名字<input id="lName"></label>':''}
    <label>邮箱<input id="lMail" type="email" autocomplete="username" inputmode="email"></label>
