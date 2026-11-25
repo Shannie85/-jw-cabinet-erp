@@ -65,10 +65,11 @@ svg text{font-size:11px;fill:#51607a}
 <nav class="side" id="side"></nav>
 <div class="main">
   <div class="top"><h1 id="title"></h1>
-    <div class="who"><span id="meName"></span> <button class="btn g s" onclick="pwModal()">改密码</button> <button class="btn g s" onclick="DB.logout()">退出登录</button> <a href="index.html" style="color:var(--blue)">📱 员工手机端</a></div></div>
+    <div class="who"><span id="meName"></span> <button class="btn g s" onclick="pwModal()">改密码</button> <button class="btn g s" id="langBtn" onclick="I18N.toggle()"></button> <button class="btn g s" onclick="DB.logout()">退出登录</button> <a href="index.html" style="color:var(--blue)">📱 员工手机端</a></div></div>
   <div id="page"></div>
 </div>
 <div class="modal" id="modal"><div id="mBody"></div></div>
+<script src="i18n.js"></script>
 <script src="supabase.js"></script>
 <script src="store.js"></script>
 <script>
@@ -124,9 +125,9 @@ function line(pts,fmt){const W=520,H=160,pad=26,n=pts.length;if(n<2)return '<p c
 const NAV=[['summary','📊','考勤总结'],['monitor','📡','实时监控'],['data','🗂️','考勤数据'],['schedule','📆','排班表'],['ot','⏰','加班管理'],['approve','✅','审批流程'],['assist','🤝','主管协助打卡'],['report','🧾','报表'],['analytics','📈','人力分析'],['staff','👥','员工管理'],['settings','⚙️','设置']];
 function pendingCount(){return DB.requests().filter(q=>DB.canDecide(q,me)).length}
 function drawNav(){$('side').innerHTML='<div class="logo">🕘 HR 考勤后台</div>'+NAV.filter(n=>n[0]!=='staff'||isHR()).map(([k,i,t])=>`<button class="${ST.page===k?'on':''}" onclick="go('${k}')">${i} ${t}${k==='approve'&&pendingCount()?`<span class="n">${pendingCount()}</span>`:''}</button>`).join('')}
-function drawMe(){$('meName').textContent=me.name+'（'+roleName[me.role]+'）'}
+function drawMe(){$('langBtn').textContent='🌐 '+I18N.label();$('meName').textContent=me.name+'（'+roleName[me.role]+'）'}
 let timer;
-function go(p){ST.page=p;render();scrollTo(0,0)}
+function go(p){ST.page=p;try{history.replaceState(null,'','#'+p)}catch(e){}render();scrollTo(0,0)}
 function render(){
   me=DB.me();drawNav();drawMe();
   const t=NAV.find(n=>n[0]===ST.page);$('title').textContent=t[2];
@@ -226,7 +227,7 @@ P.ot=()=>{
   <div class="card"><h3>⚠️ 超时下班，但没提交加班申请（${un.length}）</h3><table><tr><th>日期</th><th>员工</th><th>下班时间</th><th>超时</th></tr>${un.slice(-15).reverse().map(([e,d,s])=>`<tr><td>${d}</td><td>${esc(e.name)}</td><td>${time(s.outT)}</td><td>${fmtH(s.otRaw)} 小时</td></tr>`).join('')||'<tr><td colspan=4 class="hint">没有</td></tr>'}</table></div>`};
 
 /* ===== 审批 ===== */
-const TYPE={leave:'🏖️ 请假',overtime:'⏰ 加班',fix:'📝 补卡'};
+const TYPE={leave:'🏖️ 请假申请',overtime:'⏰ 加班申请',fix:'📝 补卡申请'};
 function detail(q){if(q.type==='leave')return `${q.kind} ${q.date}${q.to!==q.date?' ~ '+q.to:''}（${q.days}天）`;if(q.type==='overtime')return `${q.date} 加班 ${q.hours} 小时`;return `${q.date} 补${q.ptype==='in'?'上班':'下班'}卡 ${q.time}`}
 function prog(q){const steps=q.type==='overtime'?['pm']:['pm','hr'],e=DB.emp(q.empId);const order=['提交'].concat(steps.map(s=>s==='pm'?'主管':'HR'),['完成']);
   const cur=q.status==='pm'?1:q.status==='hr'?(steps.length>1?2:1):order.length-1;
@@ -328,7 +329,7 @@ function resetPw(id){closeModal();ask('重设密码','新密码（至少8位）'
 function pwModal(){ask('修改我的密码','新密码（至少8位）',async p=>{if(!p||p.length<8)return notify('密码至少8位');try{await DB.changeMyPassword(p);notify('密码已修改')}catch(e){notify(e.message)}})}
 async function showPhoto(id){try{const p=await DB.photo(id);openModal(`<h3>打卡自拍</h3><p style="text-align:center"><img src="${p}" style="max-width:100%;border-radius:12px"></p><p style="text-align:right"><button class="btn g" onclick="closeModal()">关闭</button></p>`)}catch(e){notify(e.message)}}
 
-DB.boot(async m=>{me=m;render()});
+DB.boot(async m=>{me=m;const h=location.hash.slice(1);if(NAV.some(n=>n[0]===h))ST.page=h;render()});
 
 </script>
 </body>

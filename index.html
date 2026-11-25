@@ -103,7 +103,7 @@ body{margin:0;background:#dfe6f0;font-family:-apple-system,"PingFang SC","Micros
       <div class="grid">
         <button class="qa" onclick="go('history')"><i>🗓️</i>打卡记录</button>
         <button class="qa" onclick="go('schedule')"><i>📆</i>我的排班</button>
-        <button class="qa" onclick="form('leave')"><i>🏖️</i>请假</button>
+        <button class="qa" onclick="form('leave')"><i>🏖️</i>请假申请</button>
         <button class="qa" onclick="form('overtime')"><i>⏰</i>加班申请</button>
         <button class="qa" onclick="form('fix')"><i>📝</i>补卡申请</button>
         <button class="qa" onclick="go('requests')"><i>📋</i>我的申请<em id="qaN" style="display:none"></em></button>
@@ -116,10 +116,11 @@ body{margin:0;background:#dfe6f0;font-family:-apple-system,"PingFang SC","Micros
   <section class="page" id="history"><h2>打卡记录（近30天）</h2><div id="histList"></div></section>
   <section class="page" id="schedule"><h2>我的排班</h2><div class="card" id="schList"></div></section>
   <section class="page" id="requests"><h2>我的申请</h2>
-    <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn b" style="flex:1;padding:10px" onclick="form('leave')">请假</button><button class="btn b" style="flex:1;padding:10px" onclick="form('overtime')">加班</button><button class="btn b" style="flex:1;padding:10px" onclick="form('fix')">补卡</button></div>
+    <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn b" style="flex:1;padding:10px" onclick="form('leave')">申请请假</button><button class="btn b" style="flex:1;padding:10px" onclick="form('overtime')">申请加班</button><button class="btn b" style="flex:1;padding:10px" onclick="form('fix')">申请补卡</button></div>
     <div id="reqList"></div></section>
   <section class="page" id="settings">
     <h2>设置</h2>
+    <div class="set"><b>语言 / Language</b><p></p><button class="btn b w" id="langBtn" onclick="I18N.toggle()"></button></div>
     <div class="set"><b>我的账号</b><p id="acctInfo"></p><button class="btn b w" onclick="pwSheet()">修改密码</button><div style="height:10px"></div><button class="btn w" style="background:#8a93a6" onclick="DB.logout()">退出登录</button></div>
     <div class="set"><b>办公室打卡范围</b><p id="offInfo"></p></div>
   </section>
@@ -140,6 +141,7 @@ body{margin:0;background:#dfe6f0;font-family:-apple-system,"PingFang SC","Micros
   <div class="sheet" id="sheet"><div id="sheetBody"></div></div>
 </div>
 
+<script src="i18n.js"></script>
 <script src="supabase.js"></script>
 <script src="store.js"></script>
 <script>
@@ -183,11 +185,11 @@ function renderHist(){const t=ymd(new Date());let h='';
      (s.late||s.early||s.otOk?`<span class="sub" style="margin-top:6px">${s.late?`迟到${s.late}分钟 `:''}${s.early?`早退${s.early}分钟 `:''}${s.otOk?`加班${(s.otOk/60).toFixed(1)}小时`:''}</span>`:'')+`</div>`}
   $('histList').innerHTML=h||'<p style="color:#7b8496">还没有打卡记录</p>'}
 function renderSch(){const t=ymd(new Date());let h='';for(let i=0;i<14;i++){const d=addDays(t,i),sh=DB.shiftOf(me.id,d);h+=`<div class="sch"><span>${d.slice(5)} ${wk[dow(d)]}${i===0?' (今天)':''}</span><b style="color:${sh?sh.color:'#7b8496'}">${sh?`${sh.name} ${sh.start}-${sh.end}`:'休息'}</b></div>`}$('schList').innerHTML=h}
-const TYPE={leave:'🏖️ 请假',overtime:'⏰ 加班',fix:'📝 补卡'};
+const TYPE={leave:'🏖️ 请假申请',overtime:'⏰ 加班申请',fix:'📝 补卡申请'};
 function detail(q){if(q.type==='leave')return `${q.kind} ${q.date}${q.to!==q.date?' ~ '+q.to:''}（${q.days}天）`;if(q.type==='overtime')return `${q.date} 加班${q.hours}小时`;return `${q.date} 补${q.ptype==='in'?'上班':'下班'}卡 ${q.time}`}
 function renderReq(){const L=DB.requests().filter(q=>q.empId===me.id);
   $('reqList').innerHTML=L.map(q=>`<div class="card"><div class="hd"><span>${TYPE[q.type]}</span><span class="chip c-${q.status}">${DB.stepName[q.status]}</span></div>${esc(detail(q))}<span class="sub">原因：${esc(q.reason)}</span>${q.history.map(h=>`<span class="sub">${h.act==='ok'?'✅':'❌'} ${esc(DB.emp(h.by).name)} ${h.act==='ok'?'批准':'拒绝'}${h.comment?'：'+esc(h.comment):''}</span>`).join('')}</div>`).join('')||'<p style="color:#7b8496">还没有申请</p>'}
-function renderSet(){$('acctInfo').textContent=me.name+' · '+me.email;
+function renderSet(){$('langBtn').textContent=I18N.lang==='en'?'切换到中文':'Switch to English';$('acctInfo').textContent=me.name+' · '+me.email;
   const o=DB.office();$('offInfo').textContent=o?`${o.name}，${o.radius}米内可打卡（由HR设定）`:'HR 还没有设定办公室位置，暂时不能打卡。'}
 function pwSheet(){$('sheetBody').innerHTML=`<h3>修改密码</h3><div class="f"><label>新密码（至少8位）<input id="fPw" type="password" autocomplete="new-password"></label></div><p style="display:flex;gap:10px"><button class="btn g" style="background:#e8eef7;color:#333" onclick="$('sheet').classList.remove('show')">取消</button><button class="btn b" style="flex:1" onclick="savePw()">保存</button></p>`;$('sheet').classList.add('show')}
 async function savePw(){const p=$('fPw').value;if(p.length<8)return toast('密码太短','至少8位',true);try{await DB.changeMyPassword(p);$('sheet').classList.remove('show');toast('密码已修改','')}catch(e){toast('没成功',e.message,true)}}
@@ -196,7 +198,7 @@ async function showPhoto(id){try{const p=await DB.photo(id);$('sheetBody').inner
 /* ---------- 申请表单 ---------- */
 function form(type){
   const t=ymd(new Date());let h='';
-  if(type==='leave')h=`<h3>🏖️ 请假</h3><div class="f"><label>假别<select id="fKind"><option>年假</option><option>病假</option><option>事假</option></select></label><label>从<input type="date" id="fFrom" value="${addDays(t,1)}"></label><label>到<input type="date" id="fTo" value="${addDays(t,1)}"></label><label>原因<input id="fWhy"></label></div>`;
+  if(type==='leave')h=`<h3>🏖️ 请假申请</h3><div class="f"><label>假别<select id="fKind"><option>年假</option><option>病假</option><option>事假</option></select></label><label>从<input type="date" id="fFrom" value="${addDays(t,1)}"></label><label>到<input type="date" id="fTo" value="${addDays(t,1)}"></label><label>原因<input id="fWhy"></label></div>`;
   if(type==='overtime')h=`<h3>⏰ 加班申请</h3><div class="f"><label>加班日期<input type="date" id="fDate" value="${t}"></label><label>加班多久<select id="fHrs">${[.5,1,1.5,2,3,4,5,6].map(x=>`<option value="${x}">${x} 小时</option>`).join('')}</select></label><label>原因<input id="fWhy"></label></div>`;
   if(type==='fix')h=`<h3>📝 补卡申请</h3><div class="f"><label>哪一天<input type="date" id="fDate" value="${prevWork(t)}" max="${t}"></label><label>补哪一个<select id="fType"><option value="in">上班卡</option><option value="out">下班卡</option></select></label><label>应该打卡的时间<input type="time" id="fTime" value="09:00"></label><label>原因<input id="fWhy" placeholder="例如：忘记打卡"></label></div>`;
   $('sheetBody').innerHTML=h+`<p style="display:flex;gap:10px"><button class="btn g" style="background:#e8eef7;color:#333" onclick="$('sheet').classList.remove('show')">取消</button><button class="btn b" style="flex:1" onclick="submitForm('${type}')">提交</button></p>`;$('sheet').classList.add('show')}

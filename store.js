@@ -16,7 +16,7 @@ const PRESENT=['正常','迟到','早退','迟到早退','漏打卡','上班中'
 const stepName={pm:'待主管审批',hr:'待HR审批',ok:'已批准',no:'已拒绝'};
 let S={employees:[],shifts:[],schedule:{},records:[],requests:[],audit:[],office:null,cfg:{grace:5,otMin:30,otMult:1.5}};
 let idx={},meId=null;
-const must=({data,error})=>{if(error)throw new Error(error.message||String(error));return data};
+const must=({data,error})=>{if(error){const m=error.message||String(error);throw new Error(/duplicate key/.test(m)&&/email/.test(m)?'这个邮箱已经注册过了':m)}return data};
 const normT=t=>new Date(t).toISOString();
 
 function reindex(){idx={};S.records.forEach(r=>{const k=r.empId+'|'+ymd(new Date(r.t));(idx[k]=idx[k]||[]).push(r)});Object.values(idx).forEach(a=>a.sort((x,y)=>x.t<y.t?-1:1))}
@@ -155,7 +155,8 @@ function loginScreen(setup){return new Promise(resolve=>{
    <label>邮箱<input id="lMail" type="email" autocomplete="username" inputmode="email"></label>
    <label>密码${mode==='setup'?'（至少 8 位）':''}<input id="lPw" type="password" autocomplete="${mode==='setup'?'new-password':'current-password'}"></label>
    <div class="er" id="lErr"></div><button id="lGo" type="submit">${mode==='setup'?'创建并登录':'登录'}</button>
-   ${setup?`<button type="button" class="lk" id="lSw">${mode==='setup'?'已经有账号？去登录':'第一次使用？去设置'}</button>`:''}</form>`;
+   ${setup?`<button type="button" class="lk" id="lSw">${mode==='setup'?'已经有账号？去登录':'第一次使用？去设置'}</button>`:''}<button type="button" class="lk" id="lLang">🌐 ${I18N.label()}</button></form>`;
+   box.querySelector('#lLang').onclick=()=>I18N.toggle();
    const err=m=>box.querySelector('#lErr').textContent=m;
    if(setup)box.querySelector('#lSw').onclick=()=>{mode=mode==='setup'?'login':'setup';draw()};
    box.querySelector('#lf').onsubmit=async e=>{e.preventDefault();const go=box.querySelector('#lGo');go.disabled=true;err('');
