@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HR 考勤后台</title>
+<link rel="icon" href="logo.png">
 <style>
 :root{--blue:#2f8cf0;--ink:#1d2433;--mute:#7b8496;--line:#e6ebf3;--bg:#f4f7fb;--green:#1fa760;--red:#e5484d;--orange:#f08a1f;--purple:#8e4ee0;--teal:#0e9aa7}
 *{box-sizing:border-box}
@@ -29,6 +30,7 @@ input[type=color]{padding:0;width:34px;height:30px}
 .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
 table{width:100%;border-collapse:collapse;font-size:13.5px}
 th{text-align:left;color:var(--mute);font-weight:500;padding:8px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td:first-child{white-space:nowrap}
 td{padding:9px 8px;border-bottom:1px solid #f0f3f8;vertical-align:middle}
 tr.click{cursor:pointer}tr.click:hover td{background:#f8fafd}
 .chip{display:inline-block;padding:2px 9px;border-radius:11px;font-size:12px;color:#fff;white-space:nowrap}
@@ -37,7 +39,7 @@ tr.click{cursor:pointer}tr.click:hover td{background:#f8fafd}
 .c-pm,.c-hr{background:var(--orange)}.c-ok{background:var(--green)}.c-no{background:var(--red)}
 .tag{font-size:11px;background:#eef2f9;color:#51607a;border-radius:6px;padding:1px 6px;margin-left:4px}
 .tag.w{background:#fff1e0;color:#b45f06}
-.av{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#dbe9ff;color:var(--blue);font-weight:700;font-size:12px;margin-right:8px;vertical-align:middle}
+.av{object-fit:cover;display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#dbe9ff;color:var(--blue);font-weight:700;font-size:12px;margin-right:8px;vertical-align:middle}
 .tabs{display:flex;gap:6px;margin-bottom:12px}.tabs button{border:0;background:#e8eef7;border-radius:8px;padding:7px 14px;cursor:pointer;font:inherit}.tabs .on{background:var(--blue);color:#fff}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:900px){.two{grid-template-columns:1fr}.side{position:static;width:auto;display:flex;overflow-x:auto;padding:8px}.side button{width:auto;white-space:nowrap}.logo{display:none}.main{margin-left:0;padding:0 12px 40px}}
@@ -90,7 +92,7 @@ const fmtH=m=>(m/60).toFixed(1);
 const pct=x=>(x*100).toFixed(1)+'%';
 const chip=s=>`<span class="chip c-${s}">${s}</span>`;
 const nm=id=>{const e=DB.emp(id);return e?e.name:'—'};
-const av=e=>`<span class="av">${esc(e.name[0])}</span>`;
+const av=e=>e.avatar?`<img class="av" src="${e.avatar}" alt="">`:`<span class="av">${esc(e.name[0])}</span>`;
 const roleName={employee:'员工',manager:'主管',hr:'HR'};
 const time=d=>d?hm(d):'—';
 
@@ -124,7 +126,7 @@ function line(pts,fmt){const W=520,H=160,pad=26,n=pts.length;if(n<2)return '<p c
 /* ---------- 导航 ---------- */
 const NAV=[['summary','📊','考勤总结'],['monitor','📡','实时监控'],['data','🗂️','考勤数据'],['schedule','📆','排班表'],['ot','⏰','加班管理'],['approve','✅','审批流程'],['assist','🤝','主管协助打卡'],['report','🧾','报表'],['analytics','📈','人力分析'],['staff','👥','员工管理'],['settings','⚙️','设置']];
 function pendingCount(){return DB.requests().filter(q=>DB.canDecide(q,me)).length}
-function drawNav(){$('side').innerHTML='<div class="logo">🕘 HR 考勤后台</div>'+NAV.filter(n=>n[0]!=='staff'||isHR()).map(([k,i,t])=>`<button class="${ST.page===k?'on':''}" onclick="go('${k}')">${i} ${t}${k==='approve'&&pendingCount()?`<span class="n">${pendingCount()}</span>`:''}</button>`).join('')}
+function drawNav(){$('side').innerHTML='<div class="logo"><img src="logo.png" alt="" style="display:block;height:44px;margin-bottom:6px" onerror="this.remove()">HR 考勤后台</div>'+NAV.filter(n=>n[0]!=='staff'||isHR()).map(([k,i,t])=>`<button class="${ST.page===k?'on':''}" onclick="go('${k}')">${i} ${t}${k==='approve'&&pendingCount()?`<span class="n">${pendingCount()}</span>`:''}</button>`).join('')}
 function drawMe(){$('langBtn').textContent='🌐 '+I18N.label();$('meName').textContent=me.name+'（'+roleName[me.role]+'）'}
 let timer;
 function go(p){ST.page=p;try{history.replaceState(null,'','#'+p)}catch(e){}render();scrollTo(0,0)}
@@ -314,6 +316,7 @@ P.staff=()=>{if(!isHR())return '<div class="card deny">只有 HR 可以管理员
 function staffModal(id){const e=id?DB.emp(id):null,mg=DB.allEmployees().filter(x=>x.role!=='employee'&&x.id!==id);
   openModal(`<h3>${e?'编辑员工':'新增员工账号'}</h3><div class="f">
   <label>姓名<input id="sName" value="${e?esc(e.name):''}"></label>
+  <label>头像照片（可不填）<span style="display:flex;gap:10px;align-items:center">${e?av(e):''}<input type="file" id="sPhoto" accept="image/*" style="flex:1">${e&&e.avatar?`<button type="button" class="btn s g" onclick="DB.setAvatar('${id}',null).then(()=>{closeModal();render()}).catch(x=>notify(x.message))">移除照片</button>`:''}</span></label>
   ${e?`<label>邮箱（不能改）<input value="${esc(e.email)}" disabled></label>`:`<label>登录邮箱<input id="sMail" type="email"></label><label>临时密码（至少8位）<input id="sPw" type="text" value="${Math.random().toString(36).slice(2,6)+Math.random().toString(36).slice(2,6).toUpperCase()+'7'}"></label>`}
   <label>部门<input id="sDept" value="${e?esc(e.dept):''}" list="deptList"><datalist id="deptList">${depts().map(d=>`<option>${esc(d)}</option>`).join('')}</datalist></label>
   <label>角色<select id="sRole">${['employee','manager','hr'].map(r=>`<option value="${r}" ${e&&e.role===r?'selected':''}>${roleName[r]}</option>`).join('')}</select></label>
@@ -324,7 +327,8 @@ function staffModal(id){const e=id?DB.emp(id):null,mg=DB.allEmployees().filter(x
   </div><p style="text-align:right">${e?`<button class="btn g" style="float:left" onclick="resetPw('${e.id}')">重设密码</button>`:''}<button class="btn g" onclick="closeModal()">取消</button> <button class="btn" onclick="saveStaff('${id||''}')">保存</button></p>`)}
 async function saveStaff(id){const o={name:$('sName').value.trim(),dept:$('sDept').value.trim(),role:$('sRole').value,managerId:$('sMgr').value,shiftId:$('sShift').value,rate:+$('sRate').value||0};
   if(!o.name)return notify('请填写姓名');
-  try{if(id){o.active=$('sAct').value==='1';await DB.updateUser(id,o)}else{o.email=$('sMail').value.trim();o.password=$('sPw').value;await DB.createUser(o);notify('已创建。邮箱：'+o.email+'  临时密码：'+o.password)}closeModal();render()}catch(e){notify(e.message)}}
+  try{const f=$('sPhoto').files[0],photo=f?await DB.resizeImage(f):null;
+  if(id){o.active=$('sAct').value==='1';await DB.updateUser(id,o);if(photo)await DB.setAvatar(id,photo)}else{o.email=$('sMail').value.trim();o.password=$('sPw').value;const uid=await DB.createUser(o);if(photo)await DB.setAvatar(uid,photo);notify('已创建。邮箱：'+o.email+'  临时密码：'+o.password)}closeModal();render()}catch(e){notify(e.message)}}
 function resetPw(id){closeModal();ask('重设密码','新密码（至少8位）',async p=>{if(!p||p.length<8)return notify('密码至少8位');try{await DB.setPassword(id,p);notify('已重设，请把新密码告诉员工')}catch(e){notify(e.message)}})}
 function pwModal(){ask('修改我的密码','新密码（至少8位）',async p=>{if(!p||p.length<8)return notify('密码至少8位');try{await DB.changeMyPassword(p);notify('密码已修改')}catch(e){notify(e.message)}})}
 async function showPhoto(id){try{const p=await DB.photo(id);openModal(`<h3>打卡自拍</h3><p style="text-align:center"><img src="${p}" style="max-width:100%;border-radius:12px"></p><p style="text-align:right"><button class="btn g" onclick="closeModal()">关闭</button></p>`)}catch(e){notify(e.message)}}

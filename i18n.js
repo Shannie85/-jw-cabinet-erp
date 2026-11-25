@@ -8,6 +8,7 @@ const CJK=/[㐀-鿿＀-￯　-〿]/;
 
 /* 1) 整段文字完全相同时用这张表 */
 const EXACT={
+'我的头像':'My photo','选择照片':'Choose photo','头像已更新':'Photo updated','移除照片':'Remove photo','图片打不开':'Cannot open this image','上传一张你的照片，会显示在首页，主管和 HR 也看得到。':'Upload a photo of yourself. It shows on your home screen, and supervisors and HR can see it.',
 '请假申请':'Leave request','申请请假':'Leave','申请加班':'Overtime','申请补卡':'Make-up punch',
 '员工打卡':'Staff Clock-in','HR 考勤后台':'HR Attendance Console','首页':'Home','记录':'History','申请':'Requests','设置':'Settings',
 '正常':'Normal','迟到':'Late','早退':'Left early','迟到早退':'Late & left early','缺勤':'Absent','漏打卡':'Missed punch','未到岗':'Not arrived','请假':'On leave','休息':'Rest day','上班中':'Working','未上班':'Not started','未开始':'Upcoming','休息日出勤':'Rest-day work',
@@ -29,6 +30,7 @@ const EXACT={
 
 /* 2) 句子/词组：在一段文字里按"长的先换"替换 */
 const PH=[
+['头像照片（可不填）','Profile photo (optional)'],['图片格式不对','Invalid image format'],
 ['日班','Day shift'],['早班','Early shift'],['晚班','Night shift'],['新班次','New shift'],
 ['＋ ','+ '],['＋','+'],['⬇ 导出 Excel(CSV)','⬇ Export to Excel (CSV)'],['导出 Excel(CSV)','Export to Excel (CSV)'],['导出','Export'],['手机没电','Phone out of battery'],
 ['工时(h)','Hours (h)'],['上一周','Previous week'],['下一周','Next week'],['待我审批','Awaiting my approval'],['全部申请','All requests'],

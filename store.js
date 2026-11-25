@@ -35,7 +35,7 @@ async function reload(){
     fetchAll(()=>sb.from('requests').select('*').order('created_at',{ascending:false})),
     sb.from('audit').select('*').order('t',{ascending:false}).limit(300).then(r=>r.error?[]:r.data)]);
   const rate={};co.forEach(c=>rate[c.emp_id]=+c.rate);
-  S.employees=pr.map(p=>({id:p.id,name:p.name,dept:p.dept,role:p.role,managerId:p.manager_id,shiftId:p.shift_id,rate:rate[p.id]||0,email:p.email,active:p.active}));
+  S.employees=pr.map(p=>({id:p.id,name:p.name,dept:p.dept,role:p.role,managerId:p.manager_id,shiftId:p.shift_id,rate:rate[p.id]||0,email:p.email,active:p.active,avatar:p.avatar||null}));
   S.shifts=sh.map(s=>({id:s.id,name:s.name,start:s.start_time,end:s.end_time,color:s.color}));
   S.schedule={};so.forEach(o=>{(S.schedule[o.emp_id]=S.schedule[o.emp_id]||{})[o.work_date]=o.code});
   const st={};se.forEach(x=>st[x.key]=x.value);
@@ -129,10 +129,16 @@ async function saveShift(s){must(await sb.from('shifts').upsert({id:s.id,name:s.
 async function addShift(){const id='S'+(S.shifts.length+1);const s={id,name:'新班次',start:'10:00',end:'19:00',color:'#e5484d'};await saveShift(s);S.shifts.push(s)}
 async function setOffice(o){must(await sb.from('settings').upsert({key:'office',value:o}));S.office=o}
 async function saveCfg(c){must(await sb.from('settings').upsert({key:'cfg',value:c}));S.cfg=c}
-async function createUser(o){must(await sb.rpc('hr_create_user',{p_email:o.email,p_password:o.password,p_name:o.name,p_dept:o.dept,p_role:o.role,p_manager:o.managerId||null,p_shift:o.shiftId||'A',p_rate:o.rate||0}));await reload()}
+async function createUser(o){const uid=must(await sb.rpc('hr_create_user',{p_email:o.email,p_password:o.password,p_name:o.name,p_dept:o.dept,p_role:o.role,p_manager:o.managerId||null,p_shift:o.shiftId||'A',p_rate:o.rate||0}));await reload();return uid}
 async function updateUser(id,o){
   must(await sb.from('profiles').update({name:o.name,dept:o.dept,role:o.role,manager_id:o.managerId||null,shift_id:o.shiftId,active:o.active}).eq('id',id));
   must(await sb.from('compensation').upsert({emp_id:id,rate:o.rate||0}));await reload()}
+async function setAvatar(id,dataUrl){must(await sb.rpc('set_avatar',{p_user:id,p_avatar:dataUrl}));await reload()}
+/* 把选好的照片裁成正方形、缩到 160 像素，变成很小的图片再保存 */
+function resizeImage(file,size){size=size||160;return new Promise((ok,no)=>{const img=new Image(),url=URL.createObjectURL(file);
+  img.onload=()=>{const c=document.createElement('canvas');c.width=c.height=size;const s=Math.min(img.width,img.height);
+    c.getContext('2d').drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,size,size);URL.revokeObjectURL(url);ok(c.toDataURL('image/jpeg',.82))};
+  img.onerror=()=>no(new Error('图片打不开'));img.src=url})}
 async function setPassword(id,pw){must(await sb.rpc('hr_set_password',{p_user:id,p_password:pw}))}
 async function changeMyPassword(pw){const r=await sb.auth.updateUser({password:pw});if(r.error)throw new Error(r.error.message)}
 
@@ -149,7 +155,7 @@ function loginScreen(setup){return new Promise(resolve=>{
   const box=document.createElement('div');box.id='loginBox';
   const st=document.createElement('style');st.textContent=CSS;document.head.appendChild(st);
   let mode=setup?'setup':'login';
-  const draw=()=>{box.innerHTML=`<form id="lf"><h2>${mode==='setup'?'首次设置：创建管理员':'考勤系统登录'}</h2>
+  const draw=()=>{box.innerHTML=`<form id="lf"><img src="logo.png" alt="" style="height:84px;margin:0 auto;display:block" onerror="this.remove()"><h2 style="text-align:center">${mode==='setup'?'首次设置：创建管理员':'考勤系统登录'}</h2>
    <p>${mode==='setup'?'这是第一次使用。请输入设置码，并创建你自己的管理员（HR）账号。':'请用公司给你的邮箱和密码登录。'}</p>
    ${mode==='setup'?'<label>设置码<input id="lCode" autocomplete="off"></label><label>你的名字<input id="lName"></label>':''}
    <label>邮箱<input id="lMail" type="email" autocomplete="username" inputmode="email"></label>
@@ -181,6 +187,6 @@ async function logout(){await sb.auth.signOut();location.reload()}
 
 return {boot,logout,reload,me,emp,employees:()=>S.employees.filter(e=>e.active),allEmployees:()=>S.employees,shifts:()=>S.shifts,S:()=>S,
   shiftOf,shiftCode,summary,stats,nextType,punch,photo,addRecord,editRecord,deleteRecord,addRequest,decide,canDecide,stepName,
-  setShift,setShifts,saveShift,addShift,setOffice,saveCfg,createUser,updateUser,setPassword,changeMyPassword,
+  setShift,setShifts,saveShift,addShift,setOffice,saveCfg,createUser,updateUser,setPassword,changeMyPassword,setAvatar,resizeImage,
   records:()=>S.records,requests:()=>S.requests,cfg:()=>S.cfg,office:()=>S.office,PRESENT,
   util:{pad,ymd,addDays,at,hm,dow,prevWork}}})();
