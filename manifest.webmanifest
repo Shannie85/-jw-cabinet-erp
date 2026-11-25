@@ -1,6 +1,6 @@
 {
- "name": "JW 打卡",
- "short_name": "JW 打卡",
+ "name": "JW Attendance Record",
+ "short_name": "JW Attendance",
  "description": "JW Cabinet",
  "start_url": "/",
  "scope": "/",

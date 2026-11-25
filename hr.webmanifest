@@ -1,6 +1,6 @@
 {
- "name": "JW 后台",
- "short_name": "JW 后台",
+ "name": "JW HR Console",
+ "short_name": "JW HR Console",
  "description": "JW Cabinet",
  "start_url": "/hr.html",
  "scope": "/",
