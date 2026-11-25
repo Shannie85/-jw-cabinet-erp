@@ -1,71 +1,58 @@
-/* 考勤数据中心：员工端(index.html)和后台(hr.html)共用。
-   目前数据存在浏览器里（演示用）；以后接真正的数据库只需要改这个文件。 */
+/* 考勤数据中心（连接 Supabase 线上数据库）。员工端(index.html)和后台(hr.html)共用。
+   做法：登录后把"我有权限看的数据"一次读进内存，之后的计算（迟到、加班、出勤率…）都在内存里完成；
+   所有修改都交给数据库，由数据库再检查一次权限。 */
+const SUPA_URL='https://afrpwfmjrlarzqbzhsgc.supabase.co';
+const SUPA_KEY='sb_publishable_5n2ZFRKNVgk20S2tiAn0rw_qyAH4mHz';
 const DB=(()=>{
-const KEY='hr_v2';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
 const pad=n=>String(n).padStart(2,'0');
 const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const addDays=(s,n)=>{const d=new Date(s+'T12:00');d.setDate(d.getDate()+n);return ymd(d)};
 const at=(date,t)=>new Date(date+'T'+t+':00');
 const hm=d=>pad(d.getHours())+':'+pad(d.getMinutes());
 const dow=s=>new Date(s+'T12:00').getDay();
-let S,idx={},uid=0;
-const nid=p=>p+Date.now().toString(36)+(uid++).toString(36)+Math.floor(Math.random()*1e4).toString(36);
+const prevWork=d=>{let x=addDays(d,-1);while(dow(x)%6===0)x=addDays(x,-1);return x};
 const PRESENT=['正常','迟到','早退','迟到早退','漏打卡','上班中','休息日出勤'];
+const stepName={pm:'待主管审批',hr:'待HR审批',ok:'已批准',no:'已拒绝'};
+let S={employees:[],shifts:[],schedule:{},records:[],requests:[],audit:[],office:null,cfg:{grace:5,otMin:30,otMult:1.5}};
+let idx={},meId=null;
+const must=({data,error})=>{if(error)throw new Error(error.message||String(error));return data};
+const normT=t=>new Date(t).toISOString();
 
 function reindex(){idx={};S.records.forEach(r=>{const k=r.empId+'|'+ymd(new Date(r.t));(idx[k]=idx[k]||[]).push(r)});Object.values(idx).forEach(a=>a.sort((x,y)=>x.t<y.t?-1:1))}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){console.warn('保存失败',e)}reindex()}
-function load(){let d=null;try{d=JSON.parse(localStorage.getItem(KEY))}catch(e){}S=d&&d.employees?d:seed();reindex();if(!d)save()}
-function reload(){load()}
-function prevWork(d){let x=addDays(d,-1);while(dow(x)%6===0)x=addDays(x,-1);return x}
+async function fetchAll(make){const out=[];for(let i=0;;i+=1000){const d=must(await make().range(i,i+999));out.push(...d);if(d.length<1000)break}return out}
 
-/* ---------- 示范数据 ---------- */
-function seed(){
-  let s=42;const r=()=>{s=(s*1664525+1013904223)%4294967296;return s/4294967296};
-  const today=ymd(new Date()),now=new Date();
-  const shifts=[{id:'A',name:'日班',start:'09:00',end:'18:00',color:'#2f8cf0'},{id:'B',name:'早班',start:'08:00',end:'17:00',color:'#1fa760'},{id:'C',name:'晚班',start:'14:00',end:'23:00',color:'#a45be8'}];
-  const E=[['e1','Tiffany Ng','销售部','employee','e2','A',22],['e2','Daniel Lim','销售部','manager','e12','A',35],['e3','Aisyah Rahman','销售部','employee','e2','A',20],['e4','Kumar Raj','销售部','employee','e2','A',20],
-   ['e5','Mei Ling Tan','生产部','manager','e12','B',32],['e6','Hafiz Ismail','生产部','employee','e5','B',18],['e7','Chong Wei','生产部','employee','e5','B',18],['e8','Siti Nurhaliza','生产部','employee','e5','C',19],['e13','Amir Hakim','生产部','employee','e5','C',19],
-   ['e9','Jason Wong','财务部','manager','e12','A',34],['e10','Priya Nair','财务部','employee','e9','A',24],['e11','Lucas Chan','财务部','employee','e9','A',24],['e12','Shannie Lee','人事部','hr',null,'A',36]]
-   .map(([id,name,dept,role,managerId,shiftId,rate])=>({id,name,dept,role,managerId,shiftId,rate}));
-  const D={employees:E,shifts,schedule:{},records:[],requests:[],audit:[],office:null,cfg:{grace:5,otMin:30,otMult:1.5}};
-  const sh=id=>shifts.find(x=>x.id===id);
-  const meth=['GPS定位','GPS定位','GPS定位','WiFi','NFC'];
-  const start=e=>e.role==='employee'?'pm':'hr';
-  const P=(e,type,t)=>D.records.push({id:nid('r'),empId:e.id,type,t:t.toISOString(),method:meth[Math.floor(r()*5)],dist:10+Math.floor(r()*110),face:r()>.03,photo:null,source:'self',byId:e.id,note:''});
-  const Q=o=>D.requests.push(Object.assign({id:nid('q'),created:new Date(at(o.date,'09:00').getTime()-864e5).toISOString(),history:[]},o));
-  for(let i=34;i>=0;i--){const d=addDays(today,-i),w=dow(d);if(w===0||w===6)continue;
-    for(const e of E){const s0=sh(e.shiftId),st=at(d,s0.start),en=at(d,s0.end),x=r();
-      if(x<.03)continue;
-      if(x<.06&&d!==today){Q({type:'leave',empId:e.id,date:d,to:d,days:1,kind:r()<.5?'年假':'病假',reason:'个人事务',status:'ok',history:[{by:e.managerId||'e12',act:'ok',t:new Date().toISOString()}]});continue}
-      const late=r()<.12,delay=late?6+Math.floor(r()*35):Math.floor(r()*8)-6;
-      const inT=new Date(st.getTime()+delay*6e4);if(d===today&&inT>now)continue;
-      P(e,'in',inT);
-      const z=r();let outT;
-      if(z<.18)outT=new Date(en.getTime()+(35+Math.floor(r()*110))*6e4);
-      else if(z<.24)outT=new Date(en.getTime()-(15+Math.floor(r()*40))*6e4);
-      else outT=new Date(en.getTime()+(Math.floor(r()*10)-3)*6e4);
-      if(d===today&&outT>now)continue;
-      if(d!==today&&r()<.02)continue;
-      P(e,'out',outT);
-      if(z<.18){const q=r();Q({type:'overtime',empId:e.id,date:d,hours:Math.max(.5,Math.round((outT-en)/36e5*2)/2),reason:'赶货 / 客户项目',status:i<3?start(e):(q<.78?'ok':'no'),history:i<3?[]:[{by:e.managerId||'e12',act:q<.78?'ok':'no',t:new Date().toISOString()}]})}
-    }}
-  // 一条“主管协助打卡”示范
-  const ar=D.records.find(x=>x.empId==='e4'&&x.type==='in');if(ar){ar.source='assist';ar.byId='e2';ar.note='手机没电，主管协助打卡';ar.face=false}
-  const pw=prevWork(today);
-  Q({type:'leave',empId:'e3',date:addDays(today,3),to:addDays(today,4),days:2,kind:'年假',reason:'家庭旅行',status:'pm'});
-  Q({type:'leave',empId:'e10',date:addDays(today,7),to:addDays(today,9),days:3,kind:'年假',reason:'回乡',status:'hr',history:[{by:'e9',act:'ok',t:new Date().toISOString()}]});
-  Q({type:'overtime',empId:'e6',date:today,hours:2,reason:'设备维修',status:'pm'});
-  Q({type:'fix',empId:'e7',date:pw,ptype:'out',time:'17:05',reason:'忘记打下班卡',status:'pm'});
-  Q({type:'fix',empId:'e11',date:pw,ptype:'in',time:'09:00',reason:'手机没电，无法上班打卡',status:'hr',history:[{by:'e9',act:'ok',t:new Date().toISOString()}]});
-  return D;
+/* 把线上数据读进内存 */
+async function reload(){
+  const since=addDays(ymd(new Date()),-100)+'T00:00:00';
+  const [pr,co,sh,so,se,pu,rq,au]=await Promise.all([
+    sb.from('profiles').select('*').then(must),
+    sb.from('compensation').select('*').then(must),
+    sb.from('shifts').select('*').order('id').then(must),
+    fetchAll(()=>sb.from('schedule_overrides').select('*').order('work_date')),
+    sb.from('settings').select('*').then(must),
+    fetchAll(()=>sb.from('punches').select('id,emp_id,type,t,method,dist,face,has_photo,source,by_id,note').gte('t',since).order('t')),
+    fetchAll(()=>sb.from('requests').select('*').order('created_at',{ascending:false})),
+    sb.from('audit').select('*').order('t',{ascending:false}).limit(300).then(r=>r.error?[]:r.data)]);
+  const rate={};co.forEach(c=>rate[c.emp_id]=+c.rate);
+  S.employees=pr.map(p=>({id:p.id,name:p.name,dept:p.dept,role:p.role,managerId:p.manager_id,shiftId:p.shift_id,rate:rate[p.id]||0,email:p.email,active:p.active}));
+  S.shifts=sh.map(s=>({id:s.id,name:s.name,start:s.start_time,end:s.end_time,color:s.color}));
+  S.schedule={};so.forEach(o=>{(S.schedule[o.emp_id]=S.schedule[o.emp_id]||{})[o.work_date]=o.code});
+  const st={};se.forEach(x=>st[x.key]=x.value);
+  S.office=st.office||null;S.cfg=Object.assign({grace:5,otMin:30,otMult:1.5},st.cfg||{});
+  S.records=pu.map(r=>({id:r.id,empId:r.emp_id,type:r.type,t:normT(r.t),method:r.method,dist:r.dist,face:r.face,hasPhoto:r.has_photo,source:r.source,byId:r.by_id,note:r.note}));
+  S.requests=rq.map(q=>({id:q.id,type:q.type,empId:q.emp_id,date:q.date,to:q.to_date||q.date,days:q.days,kind:q.kind,hours:q.hours==null?null:+q.hours,ptype:q.ptype,time:q.time,reason:q.reason,status:q.status,history:q.history||[],created:q.created_at}));
+  S.audit=au.map(a=>({id:a.id,t:a.t,byId:a.by_id,action:a.action,detail:a.detail}));
+  reindex();
 }
 
 /* ---------- 基础查询 ---------- */
 const emp=id=>S.employees.find(e=>e.id===id);
-function shiftCode(id,date){const o=S.schedule[id]&&S.schedule[id][date];if(o!==undefined)return o;return dow(date)%6===0?'OFF':emp(id).shiftId}
+const me=()=>emp(meId);
+function shiftCode(id,date){const o=S.schedule[id]&&S.schedule[id][date];if(o!==undefined)return o;const e=emp(id);return dow(date)%6===0?'OFF':(e?e.shiftId:'OFF')}
 function shiftOf(id,date){const c=shiftCode(id,date);return c==='OFF'?null:(S.shifts.find(x=>x.id===c)||null)}
 
-/* 某人某天的考勤结果：核心规则都在这里 */
+/* 某人某天的考勤结果：迟到、早退、缺勤、加班等规则都在这里 */
 function summary(id,date){
   const sh=shiftOf(id,date),recs=idx[id+'|'+date]||[],now=new Date(),today=ymd(now),cfg=S.cfg;
   const b={id,date,sh,recs,flags:[],late:0,early:0,workMin:0,otRaw:0,otOk:0,inT:null,outT:null,status:''};
@@ -98,7 +85,6 @@ function summary(id,date){
   if(recs.some(r=>r.source==='fix'||r.source==='edit'))b.flags.push('已更正');
   return b}
 
-/* 一段日期内的统计 */
 function stats(id,dates){
   const o={due:0,present:0,late:0,lateMin:0,early:0,absent:0,leave:0,miss:0,workMin:0,otRaw:0,otOk:0,rest:0};
   dates.forEach(d=>{const x=summary(id,d);
@@ -113,40 +99,87 @@ function stats(id,dates){
     o.workMin+=x.workMin;o.otRaw+=x.otRaw;o.otOk+=x.otOk});
   o.rate=o.due?Math.min(1,o.present/o.due):1;return o}
 
-/* ---------- 打卡 ---------- */
 function nextType(id){const a=idx[id+'|'+ymd(new Date())]||[];return a.length&&a[a.length-1].type==='in'?'out':'in'}
-function punch(id,type,o){const rec=Object.assign({id:nid('r'),empId:id,type,method:'GPS定位',dist:0,face:false,photo:null,source:'self',byId:id,note:''},o||{});
-  rec.t=((o&&o.t)||new Date()).toISOString();S.records.push(rec);save();return rec}
-function audit(byId,action,detail){S.audit.unshift({id:nid('a'),t:new Date().toISOString(),byId,action,detail});}
-function editRecord(rid,patch,byId,reason){const r=S.records.find(x=>x.id===rid);if(!r)return;const old=`${r.type==='in'?'上班':'下班'} ${new Date(r.t).toLocaleString()}`;
-  Object.assign(r,patch);if(patch.t)r.t=patch.t.toISOString();r.source='edit';r.note=reason;
-  audit(byId,'修改',`${emp(r.empId).name}：${old} → ${r.type==='in'?'上班':'下班'} ${new Date(r.t).toLocaleString()}；原因：${reason}`);save()}
-function deleteRecord(rid,byId,reason){const i=S.records.findIndex(x=>x.id===rid);if(i<0)return;const r=S.records[i];
-  audit(byId,'删除',`${emp(r.empId).name}：${r.type==='in'?'上班':'下班'} ${new Date(r.t).toLocaleString()}；原因：${reason}`);S.records.splice(i,1);save()}
-function addRecord(id,type,t,byId,reason,source){const r=punch(id,type,{t,source:source||'edit',byId,note:reason,method:'人工',face:false});
-  audit(byId,source==='assist'?'协助打卡':'新增',`${emp(id).name}：${type==='in'?'上班':'下班'} ${t.toLocaleString()}；原因：${reason}`);save();return r}
+function canDecide(q,m){if(!m)return false;if(q.status==='pm')return m.role==='hr'||(emp(q.empId)&&emp(q.empId).managerId===m.id);if(q.status==='hr')return m.role==='hr';return false}
 
-/* ---------- 审批 ---------- */
-const stepName={pm:'待主管审批',hr:'待HR审批',ok:'已批准',no:'已拒绝'};
-function addRequest(o){const e=emp(o.empId);const q=Object.assign({id:nid('q'),created:new Date().toISOString(),history:[],status:e.role==='employee'?'pm':'hr'},o);
-  if(q.status==='pm'&&!e.managerId)q.status='hr';S.requests.unshift(q);save();return q}
-function canDecide(q,me){if(q.status==='pm')return me.role==='hr'||emp(q.empId).managerId===me.id;if(q.status==='hr')return me.role==='hr';return false}
-function decide(qid,byId,ok,comment){const q=S.requests.find(x=>x.id===qid);if(!q)return;const me=emp(byId);if(!canDecide(q,me))return false;
-  const from=q.status;
-  if(!ok)q.status='no';
-  else if(from==='pm'&&me.role!=='hr'&&q.type!=='overtime')q.status='hr';
-  else q.status='ok';
-  q.history.push({by:byId,act:ok?'ok':'no',t:new Date().toISOString(),comment:comment||''});
-  if(q.status==='ok'&&q.type==='fix'){const r=punch(q.empId,q.ptype,{t:at(q.date,q.time),source:'fix',byId,method:'补卡',note:'补卡申请：'+q.reason});}
-  save();return true}
+/* ---------- 修改（都交给数据库，并由数据库再检查权限） ---------- */
+async function punch(id,type,o){o=o||{};
+  must(await sb.from('punches').insert({emp_id:id,type,method:o.method||'GPS定位',face:!!o.face,photo:o.photo||null,lat:o.lat,lng:o.lng,source:'self'}));
+  await reload()}
+async function photo(rid){const d=must(await sb.from('punches').select('photo').eq('id',rid).single());return d.photo}
+async function addRecord(empId,type,t,byId,reason,source){must(await sb.rpc('add_punch',{p_emp:empId,p_type:type,p_t:t.toISOString(),p_source:source||'edit',p_reason:reason}));await reload()}
+async function editRecord(rid,patch,byId,reason){const r=S.records.find(x=>x.id===rid);must(await sb.rpc('edit_punch',{p_id:rid,p_type:patch.type||r.type,p_t:(patch.t||new Date(r.t)).toISOString(),p_reason:reason}));await reload()}
+async function deleteRecord(rid,byId,reason){must(await sb.rpc('delete_punch',{p_id:rid,p_reason:reason}));await reload()}
+async function addRequest(o){
+  const row={type:o.type,emp_id:o.empId,date:o.date,reason:o.reason};
+  if(o.type==='leave'){row.to_date=o.to;row.days=o.days;row.kind=o.kind}
+  if(o.type==='overtime')row.hours=o.hours;
+  if(o.type==='fix'){row.ptype=o.ptype;row.time=o.time}
+  const d=must(await sb.from('requests').insert(row).select('status').single());await reload();return {status:d.status}}
+async function decide(qid,byId,ok,comment){must(await sb.rpc('decide_request',{p_id:qid,p_ok:ok,p_comment:comment||''}));await reload();return true}
+async function setShifts(changes){/* changes: [{id,date,code}] */
+  const up=[],del=[];
+  changes.forEach(({id,date,code})=>{const def=dow(date)%6===0?'OFF':emp(id).shiftId;
+    S.schedule[id]=S.schedule[id]||{};
+    if(code===def){delete S.schedule[id][date];del.push({id,date})}else{S.schedule[id][date]=code;up.push({emp_id:id,work_date:date,code})}});
+  if(up.length)must(await sb.from('schedule_overrides').upsert(up));
+  for(const d of del)must(await sb.from('schedule_overrides').delete().eq('emp_id',d.id).eq('work_date',d.date))}
+const setShift=(id,date,code)=>setShifts([{id,date,code}]);
+async function saveShift(s){must(await sb.from('shifts').upsert({id:s.id,name:s.name,start_time:s.start,end_time:s.end,color:s.color}))}
+async function addShift(){const id='S'+(S.shifts.length+1);const s={id,name:'新班次',start:'10:00',end:'19:00',color:'#e5484d'};await saveShift(s);S.shifts.push(s)}
+async function setOffice(o){must(await sb.from('settings').upsert({key:'office',value:o}));S.office=o}
+async function saveCfg(c){must(await sb.from('settings').upsert({key:'cfg',value:c}));S.cfg=c}
+async function createUser(o){must(await sb.rpc('hr_create_user',{p_email:o.email,p_password:o.password,p_name:o.name,p_dept:o.dept,p_role:o.role,p_manager:o.managerId||null,p_shift:o.shiftId||'A',p_rate:o.rate||0}));await reload()}
+async function updateUser(id,o){
+  must(await sb.from('profiles').update({name:o.name,dept:o.dept,role:o.role,manager_id:o.managerId||null,shift_id:o.shiftId,active:o.active}).eq('id',id));
+  must(await sb.from('compensation').upsert({emp_id:id,rate:o.rate||0}));await reload()}
+async function setPassword(id,pw){must(await sb.rpc('hr_set_password',{p_user:id,p_password:pw}))}
+async function changeMyPassword(pw){const r=await sb.auth.updateUser({password:pw});if(r.error)throw new Error(r.error.message)}
 
-/* ---------- 排班 ---------- */
-function setShift(id,date,code){const def=dow(date)%6===0?'OFF':emp(id).shiftId;
-  S.schedule[id]=S.schedule[id]||{};if(code===def)delete S.schedule[id][date];else S.schedule[id][date]=code;save()}
+/* ---------- 登录 ---------- */
+const CSS=`#loginBox{position:fixed;inset:0;background:linear-gradient(180deg,#2f8cf0,#6bb6ff 60%,#f4f7fb);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,Roboto,sans-serif}
+#loginBox form{background:#fff;border-radius:20px;padding:26px 22px;width:min(380px,100%);box-shadow:0 20px 50px #0003;display:grid;gap:12px;color:#1d2433}
+#loginBox h2{margin:0;font-size:22px}#loginBox p{margin:0;color:#7b8496;font-size:13px}
+#loginBox label{display:grid;gap:4px;font-size:13px;color:#7b8496}
+#loginBox input{font:inherit;font-size:16px;padding:12px;border:1px solid #d8dfeb;border-radius:10px;color:#1d2433}
+#loginBox button{border:0;border-radius:12px;padding:13px;font-size:16px;font-weight:600;color:#fff;background:#2f8cf0;cursor:pointer}
+#loginBox .lk{background:none;color:#2f8cf0;font-size:13px;font-weight:400;padding:2px}
+#loginBox .er{color:#e5484d;font-size:13px;min-height:1em}`;
+function loginScreen(setup){return new Promise(resolve=>{
+  const box=document.createElement('div');box.id='loginBox';
+  const st=document.createElement('style');st.textContent=CSS;document.head.appendChild(st);
+  let mode=setup?'setup':'login';
+  const draw=()=>{box.innerHTML=`<form id="lf"><h2>${mode==='setup'?'首次设置：创建管理员':'考勤系统登录'}</h2>
+   <p>${mode==='setup'?'这是第一次使用。请输入设置码，并创建你自己的管理员（HR）账号。':'请用公司给你的邮箱和密码登录。'}</p>
+   ${mode==='setup'?'<label>设置码<input id="lCode" autocomplete="off"></label><label>你的名字<input id="lName"></label>':''}
+   <label>邮箱<input id="lMail" type="email" autocomplete="username" inputmode="email"></label>
+   <label>密码${mode==='setup'?'（至少 8 位）':''}<input id="lPw" type="password" autocomplete="${mode==='setup'?'new-password':'current-password'}"></label>
+   <div class="er" id="lErr"></div><button id="lGo" type="submit">${mode==='setup'?'创建并登录':'登录'}</button>
+   ${setup?`<button type="button" class="lk" id="lSw">${mode==='setup'?'已经有账号？去登录':'第一次使用？去设置'}</button>`:''}</form>`;
+   const err=m=>box.querySelector('#lErr').textContent=m;
+   if(setup)box.querySelector('#lSw').onclick=()=>{mode=mode==='setup'?'login':'setup';draw()};
+   box.querySelector('#lf').onsubmit=async e=>{e.preventDefault();const go=box.querySelector('#lGo');go.disabled=true;err('');
+     try{const em=box.querySelector('#lMail').value.trim(),pw=box.querySelector('#lPw').value;
+       if(mode==='setup'){must(await sb.rpc('bootstrap_admin',{p_code:box.querySelector('#lCode').value.trim(),p_email:em,p_password:pw,p_name:box.querySelector('#lName').value.trim()||'管理员'}))}
+       const r=await sb.auth.signInWithPassword({email:em,password:pw});if(r.error)throw new Error(r.error.message==='Invalid login credentials'?'邮箱或密码不对':r.error.message);
+       box.remove();resolve(r.data.session)}catch(x){err(x.message);go.disabled=false}}};
+  draw();document.body.appendChild(box)})}
 
-function reset(){localStorage.removeItem(KEY);load();save()}
-load();
-window.addEventListener('storage',e=>{if(e.key===KEY){load()}});
-return {S:()=>S,reload,save,reset,emp,employees:()=>S.employees,shifts:()=>S.shifts,shiftOf,shiftCode,summary,stats,nextType,punch,addRecord,editRecord,deleteRecord,audit,addRequest,decide,canDecide,stepName,setShift,
-  records:()=>S.records,requests:()=>S.requests,cfg:()=>S.cfg,office:()=>S.office,setOffice:o=>{S.office=o;save()},PRESENT,
-  util:{pad,ymd,addDays,at,hm,dow,prevWork,nid}}})();
+/* 启动：没登录就先登录，登录后读入数据，再交给页面 */
+async function boot(start){
+  try{
+    let {data:{session}}=await sb.auth.getSession();
+    if(!session){let setup=false;try{const r=await sb.rpc('needs_setup');setup=r.data===true}catch(e){}
+      session=await loginScreen(setup)}
+    meId=session.user.id;
+    await reload();
+    if(!me()){await sb.auth.signOut();document.body.innerHTML='<p style="padding:30px;font-family:sans-serif">这个账号还没有开通权限，请联系 HR。 <a href="">重新登录</a></p>';return}
+    await start(me());
+  }catch(e){document.body.insertAdjacentHTML('afterbegin',`<p style="padding:20px;color:#e5484d;font-family:sans-serif">连接失败：${String(e.message).replace(/</g,'&lt;')} <a href="">重试</a></p>`)}}
+async function logout(){await sb.auth.signOut();location.reload()}
+
+return {boot,logout,reload,me,emp,employees:()=>S.employees.filter(e=>e.active),allEmployees:()=>S.employees,shifts:()=>S.shifts,S:()=>S,
+  shiftOf,shiftCode,summary,stats,nextType,punch,photo,addRecord,editRecord,deleteRecord,addRequest,decide,canDecide,stepName,
+  setShift,setShifts,saveShift,addShift,setOffice,saveCfg,createUser,updateUser,setPassword,changeMyPassword,
+  records:()=>S.records,requests:()=>S.requests,cfg:()=>S.cfg,office:()=>S.office,PRESENT,
+  util:{pad,ymd,addDays,at,hm,dow,prevWork}}})();

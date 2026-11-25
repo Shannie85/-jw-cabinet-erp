@@ -65,17 +65,18 @@ svg text{font-size:11px;fill:#51607a}
 <nav class="side" id="side"></nav>
 <div class="main">
   <div class="top"><h1 id="title"></h1>
-    <div class="who">登录身份：<select id="meSel"></select> <a href="index.html" style="color:var(--blue)">📱 员工手机端</a></div></div>
+    <div class="who"><span id="meName"></span> <button class="btn g s" onclick="pwModal()">改密码</button> <button class="btn g s" onclick="DB.logout()">退出登录</button> <a href="index.html" style="color:var(--blue)">📱 员工手机端</a></div></div>
   <div id="page"></div>
 </div>
 <div class="modal" id="modal"><div id="mBody"></div></div>
+<script src="supabase.js"></script>
 <script src="store.js"></script>
 <script>
 const {pad,ymd,addDays,at,hm,dow,prevWork}=DB.util;
 const WK=['日','一','二','三','四','五','六'];
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const $=id=>document.getElementById(id);
-let me=DB.emp(localStorage.getItem('hr_me'))||DB.emp('e12');
+let me=null;
 const today=ymd(new Date());
 const ST={page:'summary',month:today.slice(0,7),dept:'',emp:'',from:addDays(today,-6),to:today,dtab:'raw',week:mondayOf(today),atab:'mine',rtype:'monthly',type:''};
 function mondayOf(d){const w=dow(d);return addDays(d,w===0?-6:1-w)}
@@ -120,21 +121,19 @@ function line(pts,fmt){const W=520,H=160,pad=26,n=pts.length;if(n<2)return '<p c
    `<text x="0" y="14">${fmt(hi)}</text><text x="0" y="${H-4}">${fmt(lo)}</text></svg>`}
 
 /* ---------- 导航 ---------- */
-const NAV=[['summary','📊','考勤总结'],['monitor','📡','实时监控'],['data','🗂️','考勤数据'],['schedule','📆','排班表'],['ot','⏰','加班管理'],['approve','✅','审批流程'],['assist','🤝','主管协助打卡'],['report','🧾','报表'],['analytics','📈','人力分析'],['settings','⚙️','设置']];
+const NAV=[['summary','📊','考勤总结'],['monitor','📡','实时监控'],['data','🗂️','考勤数据'],['schedule','📆','排班表'],['ot','⏰','加班管理'],['approve','✅','审批流程'],['assist','🤝','主管协助打卡'],['report','🧾','报表'],['analytics','📈','人力分析'],['staff','👥','员工管理'],['settings','⚙️','设置']];
 function pendingCount(){return DB.requests().filter(q=>DB.canDecide(q,me)).length}
-function drawNav(){$('side').innerHTML='<div class="logo">🕘 HR 考勤后台</div>'+NAV.map(([k,i,t])=>`<button class="${ST.page===k?'on':''}" onclick="go('${k}')">${i} ${t}${k==='approve'&&pendingCount()?`<span class="n">${pendingCount()}</span>`:''}</button>`).join('')}
-function drawMe(){$('meSel').innerHTML=DB.employees().map(e=>`<option value="${e.id}" ${e.id===me.id?'selected':''}>${esc(e.name)}（${roleName[e.role]}）</option>`).join('')}
-$('meSel').onchange=e=>{me=DB.emp(e.target.value);localStorage.setItem('hr_me',me.id);ST.emp='';render()};
+function drawNav(){$('side').innerHTML='<div class="logo">🕘 HR 考勤后台</div>'+NAV.filter(n=>n[0]!=='staff'||isHR()).map(([k,i,t])=>`<button class="${ST.page===k?'on':''}" onclick="go('${k}')">${i} ${t}${k==='approve'&&pendingCount()?`<span class="n">${pendingCount()}</span>`:''}</button>`).join('')}
+function drawMe(){$('meName').textContent=me.name+'（'+roleName[me.role]+'）'}
 let timer;
 function go(p){ST.page=p;render();scrollTo(0,0)}
 function render(){
-  DB.reload();me=DB.emp(me.id);drawNav();drawMe();
+  me=DB.me();drawNav();drawMe();
   const t=NAV.find(n=>n[0]===ST.page);$('title').textContent=t[2];
   if(!isMgr()){$('page').innerHTML=`<div class="card deny"><h3>你是普通员工，没有后台权限</h3>请在右上角"登录身份"换成主管（例如 Daniel Lim）或 HR（Shannie Lee）。<br><br><a href="index.html">回员工手机端</a></div>`;return}
   $('page').innerHTML=P[ST.page]();
-  clearInterval(timer);if(ST.page==='monitor')timer=setInterval(()=>{if(!$('modal').classList.contains('show'))render()},10000);
+  clearInterval(timer);if(ST.page==='monitor')timer=setInterval(async()=>{if(!$('modal').classList.contains('show')){try{await DB.reload()}catch(e){}render()}},10000);
 }
-window.addEventListener('storage',()=>{if(ST.page!=='schedule'&&!$('modal').classList.contains('show'))render()});
 
 /* 通用筛选条 */
 const empSel=()=>`<select onchange="ST.emp=this.value;render()"><option value="">全部员工</option>${scope().map(e=>`<option value="${e.id}" ${ST.emp===e.id?'selected':''}>${esc(e.name)}</option>`).join('')}</select>`;
@@ -189,7 +188,7 @@ P.data=()=>{
   window._raw=recs.map(r=>[new Date(r.t).toLocaleString(),nm(r.empId),r.type==='in'?'上班':'下班',r.method,r.dist,r.face?'是':'否',{self:'本人',assist:'主管协助',edit:'人工修改',fix:'补卡'}[r.source],nm(r.byId),r.note]);
   return bar+filt+`<div class="card"><div class="bar"><button class="btn" onclick="recModal()">＋ 新增一条记录</button><button class="btn g" onclick="csv('打卡原始记录',['时间','员工','类型','方式','距离米','人脸','来源','操作人','备注'],window._raw)">⬇ 导出 Excel(CSV)</button><span class="hint">共 ${recs.length} 条 · 修改、删除都需要填写原因，并会记入"修改日志"</span></div>
   <table><tr><th>时间</th><th>员工</th><th>类型</th><th>方式</th><th>距离</th><th>人脸</th><th>来源</th><th>备注</th><th></th></tr>`+
-  recs.slice(0,300).map(r=>`<tr><td>${new Date(r.t).toLocaleString()}</td><td>${esc(nm(r.empId))}</td><td>${r.type==='in'?'🟢上班':'🔴下班'}</td><td>${esc(r.method)}</td><td>${r.dist}米</td><td>${r.photo?`<img src="${r.photo}" width="30" style="border-radius:50%">`:(r.face?'✓':'—')}</td><td>${{self:'本人',assist:'<span class="tag w">主管协助</span>',edit:'<span class="tag w">人工修改</span>',fix:'<span class="tag">补卡</span>'}[r.source]}</td><td>${esc(r.note)}</td><td><button class="btn s g" onclick="recModal('${r.id}')">编辑</button> <button class="btn s r" onclick="delRec('${r.id}')">删除</button></td></tr>`).join('')+'</table></div>'};
+  recs.slice(0,300).map(r=>`<tr><td>${new Date(r.t).toLocaleString()}</td><td>${esc(nm(r.empId))}</td><td>${r.type==='in'?'🟢上班':'🔴下班'}</td><td>${esc(r.method)}</td><td>${r.dist}米</td><td>${r.hasPhoto?`<button class="btn s g" onclick="showPhoto('${r.id}')">📷</button>`:(r.face?'✓':'—')}</td><td>${{self:'本人',assist:'<span class="tag w">主管协助</span>',edit:'<span class="tag w">人工修改</span>',fix:'<span class="tag">补卡</span>'}[r.source]}</td><td>${esc(r.note)}</td><td><button class="btn s g" onclick="recModal('${r.id}')">编辑</button> <button class="btn s r" onclick="delRec('${r.id}')">删除</button></td></tr>`).join('')+'</table></div>'};
 function recModal(id){const r=id?DB.records().find(x=>x.id===id):null,d=r?new Date(r.t):new Date();
   openModal(`<h3>${r?'编辑打卡记录':'新增打卡记录'}</h3><div class="f">
    <label>员工<select id="rEmp" ${r?'disabled':''}>${scope().map(e=>`<option value="${e.id}" ${r&&r.empId===e.id?'selected':''}>${esc(e.name)}</option>`).join('')}</select></label>
@@ -197,9 +196,9 @@ function recModal(id){const r=id?DB.records().find(x=>x.id===id):null,d=r?new Da
    <label>时间<input type="datetime-local" id="rTime" value="${ymd(d)}T${hm(d)}"></label>
    <label>原因（必填，会记录下来）<input id="rWhy" placeholder="例如：员工忘记打卡，已核实"></label></div>
    <p style="text-align:right"><button class="btn g" onclick="closeModal()">取消</button> <button class="btn" onclick="saveRec('${id||''}')">保存</button></p>`)}
-function saveRec(id){const why=$('rWhy').value.trim();if(!why)return notify('请填写原因');const t=new Date($('rTime').value);if(isNaN(t))return notify('时间不对');
-  if(id)DB.editRecord(id,{type:$('rType').value,t},me.id,why);else DB.addRecord($('rEmp').value,$('rType').value,t,me.id,why,'edit');closeModal();render()}
-function delRec(id){ask('删除这条打卡记录','为什么要删除？（必填，会记入修改日志）',why=>{if(!why)return notify('请填写原因');DB.deleteRecord(id,me.id,why);render()})}
+async function saveRec(id){const why=$('rWhy').value.trim();if(!why)return notify('请填写原因');const t=new Date($('rTime').value);if(isNaN(t))return notify('时间不对');
+  try{if(id)await DB.editRecord(id,{type:$('rType').value,t},me.id,why);else await DB.addRecord($('rEmp').value,$('rType').value,t,me.id,why,'edit');closeModal();render()}catch(e){notify(e.message)}}
+function delRec(id){ask('删除这条打卡记录','为什么要删除？（必填，会记入修改日志）',async why=>{if(!why)return notify('请填写原因');try{await DB.deleteRecord(id,me.id,why);render()}catch(e){notify(e.message)}})}
 
 /* ===== 排班表 ===== */
 P.schedule=()=>{
@@ -208,11 +207,11 @@ P.schedule=()=>{
   return `<div class="bar"><button class="btn g" onclick="ST.week=addDays(ST.week,-7);render()">‹ 上一周</button><b>${ST.week} ~ ${addDays(ST.week,6)}</b><button class="btn g" onclick="ST.week=addDays(ST.week,7);render()">下一周 ›</button><button class="btn g" onclick="ST.week=mondayOf(today);render()">本周</button>${deptSel()}<span class="hint">选择后自动保存。蓝色底 = 与默认不同（手动调整过）</span></div>
   <div class="card"><table class="sch"><tr><th>员工</th>${days.map(d=>`<th>周${WK[dow(d)]}<br><small>${d.slice(5)}</small></th>`).join('')}</tr>`+
   Object.entries(byDept).map(([dp,es])=>`<tr><td colspan="8" style="background:#f4f7fb;font-weight:600;text-align:left">${dp} <span class="hint">整周套用：</span><select onchange="applyDept('${dp}',this.value);this.value=''"><option value="">选择班次…</option>${DB.shifts().map(s=>`<option value="${s.id}">${esc(s.name)} (周一至周五)</option>`).join('')}</select></td></tr>`+
-   es.map(e=>`<tr><td>${av(e)}${esc(e.name)}</td>${days.map(d=>{const c=DB.shiftCode(e.id,d),def=dow(d)%6===0?'OFF':e.shiftId,sh=DB.shifts().find(s=>s.id===c);return `<td><select style="${c!==def?'background:#e0efff;':''}${sh?'border-left:4px solid '+sh.color:''}" onchange="DB.setShift('${e.id}','${d}',this.value)">${opts(c)}</select></td>`}).join('')}</tr>`).join('')).join('')+`</table></div>
+   es.map(e=>`<tr><td>${av(e)}${esc(e.name)}</td>${days.map(d=>{const c=DB.shiftCode(e.id,d),def=dow(d)%6===0?'OFF':e.shiftId,sh=DB.shifts().find(s=>s.id===c);return `<td><select style="${c!==def?'background:#e0efff;':''}${sh?'border-left:4px solid '+sh.color:''}" onchange="DB.setShift('${e.id}','${d}',this.value).catch(x=>notify(x.message))">${opts(c)}</select></td>`}).join('')}</tr>`).join('')).join('')+`</table></div>
   ${isHR()?`<div class="card"><h3>班次设定</h3><table><tr><th>名称</th><th>上班</th><th>下班</th><th>颜色</th></tr>${DB.shifts().map(s=>`<tr><td><input value="${esc(s.name)}" onchange="editShift('${s.id}','name',this.value)" size="8"></td><td><input type="time" value="${s.start}" onchange="editShift('${s.id}','start',this.value)"></td><td><input type="time" value="${s.end}" onchange="editShift('${s.id}','end',this.value)"></td><td><input type="color" value="${s.color}" onchange="editShift('${s.id}','color',this.value)"></td></tr>`).join('')}</table><p><button class="btn" onclick="newShift()">＋ 新增班次</button> <span class="hint">修改班次时间会影响迟到/早退的计算</span></p></div>`:''}`};
-function applyDept(dp,code){if(!code)return;DB.employees().filter(e=>e.dept===dp&&scope().includes(e)).forEach(e=>addDays&&dates(ST.week,addDays(ST.week,4)).forEach(d=>DB.setShift(e.id,d,code)));render()}
-function editShift(id,k,v){const s=DB.shifts().find(x=>x.id===id);s[k]=v;DB.save()}
-function newShift(){const id='S'+(DB.shifts().length+1);DB.shifts().push({id,name:'新班次',start:'10:00',end:'19:00',color:'#e5484d'});DB.save();render()}
+async function applyDept(dp,code){if(!code)return;const ch=[];DB.employees().filter(e=>e.dept===dp&&scope().includes(e)).forEach(e=>dates(ST.week,addDays(ST.week,4)).forEach(d=>ch.push({id:e.id,date:d,code})));try{await DB.setShifts(ch);render()}catch(e){notify(e.message)}}
+function editShift(id,k,v){const s=DB.shifts().find(x=>x.id===id);s[k]=v;DB.saveShift(s).catch(e=>notify(e.message))}
+async function newShift(){try{await DB.addShift();render()}catch(e){notify(e.message)}}
 
 /* ===== 加班管理 ===== */
 P.ot=()=>{
@@ -236,7 +235,7 @@ function apvCard(q){const e=DB.emp(q.empId),can=DB.canDecide(q,me);
   return `<div class="apv"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><b>${TYPE[q.type]}</b> · ${av(e)}${esc(e.name)} <span class="tag">${e.dept}</span><br><span>${esc(detail(q))}</span><br><span class="hint">原因：${esc(q.reason)} · 提交于 ${new Date(q.created).toLocaleDateString()}</span></div><div style="text-align:right">${chip(q.status)} <span class="hint">${DB.stepName[q.status]}</span></div></div>
   <div style="margin-top:8px" class="prog">${prog(q)}</div>${q.history.map(h=>`<div class="hint">${h.act==='ok'?'✅':'❌'} ${esc(nm(h.by))} ${h.act==='ok'?'批准':'拒绝'}${h.comment?'：'+esc(h.comment):''}</div>`).join('')}
   ${can?`<div style="margin-top:8px"><button class="btn ok s" onclick="decide('${q.id}',true)">批准</button> <button class="btn r s" onclick="decide('${q.id}',false)">拒绝</button></div>`:''}</div>`}
-function decide(id,ok){if(ok){DB.decide(id,me.id,true,'');render();notify('已批准')}else ask('拒绝申请','拒绝原因（可不填）',c=>{DB.decide(id,me.id,false,c);render();notify('已拒绝')})}
+async function decide(id,ok){try{if(ok){await DB.decide(id,me.id,true,'');render();notify('已批准')}else ask('拒绝申请','拒绝原因（可不填）',async c=>{try{await DB.decide(id,me.id,false,c);render();notify('已拒绝')}catch(e){notify(e.message)}})}catch(e){notify(e.message)}}
 P.approve=()=>{
   const mine=DB.requests().filter(q=>DB.canDecide(q,me)),all=DB.requests().filter(q=>scope().some(e=>e.id===q.empId));
   const show=ST.atab==='mine'?mine:all;
@@ -255,8 +254,8 @@ P.assist=()=>{
   <label>原因（必填）<input id="aWhy" placeholder="例如：手机没电"></label>
   <button class="btn" onclick="doAssist()">确认协助打卡</button></div></div>
   <div class="card"><h3>最近的协助打卡</h3>${ex.map(r=>`<div style="padding:8px 0;border-bottom:1px solid #f0f3f8">${r.type==='in'?'🟢':'🔴'} <b>${esc(nm(r.empId))}</b> ${new Date(r.t).toLocaleString()}<br><span class="hint">由 ${esc(nm(r.byId))} 协助 · ${esc(r.note)}</span></div>`).join('')||'<p class="hint">暂无</p>'}</div></div>`};
-function doAssist(){const why=$('aWhy').value.trim(),t=new Date($('aTime').value);if(!why)return notify('请填写原因');if(isNaN(t))return notify('时间不对');if(!$('aEmp').value)return notify('没有可协助的员工');
-  DB.addRecord($('aEmp').value,$('aType').value,t,me.id,why,'assist');notify('已协助打卡');render()}
+async function doAssist(){const why=$('aWhy').value.trim(),t=new Date($('aTime').value);if(!why)return notify('请填写原因');if(isNaN(t))return notify('时间不对');if(!$('aEmp').value)return notify('没有可协助的员工');
+  try{await DB.addRecord($('aEmp').value,$('aType').value,t,me.id,why,'assist');notify('已协助打卡');render()}catch(e){notify(e.message)}}
 
 /* ===== 报表 ===== */
 function buildReport(){
@@ -300,12 +299,37 @@ P.settings=()=>{const o=DB.office(),c=DB.cfg();
   <label>名称<input id="oName" value="${esc(o?o.name:'KL Office')}"></label><label>纬度<input id="oLat" value="${o?o.lat:''}"></label><label>经度<input id="oLng" value="${o?o.lng:''}"></label><label>多少米内可打卡<input id="oRad" type="number" value="${o?o.radius:150}"></label>
   <button class="btn g" onclick="useHere()">📍 用我现在的位置</button><button class="btn" onclick="saveOffice()">保存</button></div></div>
   <div class="card"><h3>考勤规则</h3><div class="f"><label>迟到/早退宽限（分钟）<input id="gG" type="number" value="${c.grace}"></label><label>超过多少分钟才算加班<input id="gO" type="number" value="${c.otMin}"></label><label>加班费倍率<input id="gM" type="number" step="0.1" value="${c.otMult}"></label><button class="btn" onclick="saveCfg()">保存</button></div>
-  <hr style="border:0;border-top:1px solid var(--line);margin:18px 0"><h3>演示数据</h3><p class="hint">现在用的是示范员工和示范打卡。清空后会重新生成示范数据。</p><button class="btn r" onclick="ask('重置示范数据','你新增的记录会消失，确定吗？',()=>{DB.reset();render();notify('已重置')},false)">重置示范数据</button></div></div>`};
+  <hr style="border:0;border-top:1px solid var(--line);margin:18px 0"><h3>我的账号</h3><p class="hint">登录邮箱：${esc(me.email)}</p><button class="btn g" onclick="pwModal()">修改我的密码</button></div></div>`};
 function useHere(){navigator.geolocation.getCurrentPosition(p=>{$('oLat').value=p.coords.latitude;$('oLng').value=p.coords.longitude},e=>notify('拿不到位置，请允许浏览器定位'))}
-function saveOffice(){const lat=parseFloat($('oLat').value),lng=parseFloat($('oLng').value);if(isNaN(lat)||isNaN(lng))return notify('请填写位置，或点"用我现在的位置"');DB.setOffice({name:$('oName').value||'办公室',lat,lng,radius:Math.max(30,+$('oRad').value||150)});notify('已保存');render()}
-function saveCfg(){const c=DB.cfg();c.grace=+$('gG').value||0;c.otMin=+$('gO').value||0;c.otMult=+$('gM').value||1.5;DB.save();notify('已保存');render()}
+async function saveOffice(){const lat=parseFloat($('oLat').value),lng=parseFloat($('oLng').value);if(isNaN(lat)||isNaN(lng))return notify('请填写位置，或点"用我现在的位置"');try{await DB.setOffice({name:$('oName').value||'办公室',lat,lng,radius:Math.max(30,+$('oRad').value||150)});notify('已保存');render()}catch(e){notify(e.message)}}
+async function saveCfg(){try{await DB.saveCfg({grace:+$('gG').value||0,otMin:+$('gO').value||0,otMult:+$('gM').value||1.5});notify('已保存');render()}catch(e){notify(e.message)}}
 
-render();
+/* ===== 员工管理（只有 HR） ===== */
+P.staff=()=>{if(!isHR())return '<div class="card deny">只有 HR 可以管理员工账号</div>';
+  const all=DB.allEmployees();
+  return `<div class="bar"><button class="btn" onclick="staffModal()">＋ 新增员工账号</button><span class="hint">新增后，把邮箱和临时密码告诉员工，员工就能登录。建议员工第一次登录后自己改密码。</span></div>
+  <div class="card"><table><tr><th>姓名</th><th>邮箱</th><th>部门</th><th>角色</th><th>直属主管</th><th>班次</th><th>时薪(RM)</th><th>状态</th><th></th></tr>`+
+  all.map(e=>`<tr><td>${av(e)}${esc(e.name)}</td><td>${esc(e.email)}</td><td>${esc(e.dept)}</td><td>${roleName[e.role]}</td><td>${esc(nm(e.managerId))}</td><td>${esc((DB.shifts().find(s=>s.id===e.shiftId)||{}).name||e.shiftId)}</td><td>${e.rate}</td><td>${e.active?'在职':'<span class="tag w">已停用</span>'}</td><td><button class="btn s g" onclick="staffModal('${e.id}')">编辑</button></td></tr>`).join('')+`</table></div>`};
+function staffModal(id){const e=id?DB.emp(id):null,mg=DB.allEmployees().filter(x=>x.role!=='employee'&&x.id!==id);
+  openModal(`<h3>${e?'编辑员工':'新增员工账号'}</h3><div class="f">
+  <label>姓名<input id="sName" value="${e?esc(e.name):''}"></label>
+  ${e?`<label>邮箱（不能改）<input value="${esc(e.email)}" disabled></label>`:`<label>登录邮箱<input id="sMail" type="email"></label><label>临时密码（至少8位）<input id="sPw" type="text" value="${Math.random().toString(36).slice(2,6)+Math.random().toString(36).slice(2,6).toUpperCase()+'7'}"></label>`}
+  <label>部门<input id="sDept" value="${e?esc(e.dept):''}" list="deptList"><datalist id="deptList">${depts().map(d=>`<option>${esc(d)}</option>`).join('')}</datalist></label>
+  <label>角色<select id="sRole">${['employee','manager','hr'].map(r=>`<option value="${r}" ${e&&e.role===r?'selected':''}>${roleName[r]}</option>`).join('')}</select></label>
+  <label>直属主管<select id="sMgr"><option value="">（无）</option>${mg.map(m=>`<option value="${m.id}" ${e&&e.managerId===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}</select></label>
+  <label>默认班次<select id="sShift">${DB.shifts().map(s=>`<option value="${s.id}" ${e&&e.shiftId===s.id?'selected':''}>${esc(s.name)} ${s.start}-${s.end}</option>`).join('')}</select></label>
+  <label>时薪 RM（算加班费用，只有 HR 看得到）<input id="sRate" type="number" step="0.5" value="${e?e.rate:0}"></label>
+  ${e?`<label>状态<select id="sAct"><option value="1" ${e.active?'selected':''}>在职</option><option value="0" ${!e.active?'selected':''}>停用（不能再登录）</option></select></label>`:''}
+  </div><p style="text-align:right">${e?`<button class="btn g" style="float:left" onclick="resetPw('${e.id}')">重设密码</button>`:''}<button class="btn g" onclick="closeModal()">取消</button> <button class="btn" onclick="saveStaff('${id||''}')">保存</button></p>`)}
+async function saveStaff(id){const o={name:$('sName').value.trim(),dept:$('sDept').value.trim(),role:$('sRole').value,managerId:$('sMgr').value,shiftId:$('sShift').value,rate:+$('sRate').value||0};
+  if(!o.name)return notify('请填写姓名');
+  try{if(id){o.active=$('sAct').value==='1';await DB.updateUser(id,o)}else{o.email=$('sMail').value.trim();o.password=$('sPw').value;await DB.createUser(o);notify('已创建。邮箱：'+o.email+'  临时密码：'+o.password)}closeModal();render()}catch(e){notify(e.message)}}
+function resetPw(id){closeModal();ask('重设密码','新密码（至少8位）',async p=>{if(!p||p.length<8)return notify('密码至少8位');try{await DB.setPassword(id,p);notify('已重设，请把新密码告诉员工')}catch(e){notify(e.message)}})}
+function pwModal(){ask('修改我的密码','新密码（至少8位）',async p=>{if(!p||p.length<8)return notify('密码至少8位');try{await DB.changeMyPassword(p);notify('密码已修改')}catch(e){notify(e.message)}})}
+async function showPhoto(id){try{const p=await DB.photo(id);openModal(`<h3>打卡自拍</h3><p style="text-align:center"><img src="${p}" style="max-width:100%;border-radius:12px"></p><p style="text-align:right"><button class="btn g" onclick="closeModal()">关闭</button></p>`)}catch(e){notify(e.message)}}
+
+DB.boot(async m=>{me=m;render()});
+
 </script>
 </body>
 </html>
