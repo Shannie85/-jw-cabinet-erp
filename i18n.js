@@ -8,6 +8,7 @@ const CJK=/[㐀-鿿＀-￯　-〿]/;
 
 /* 1) 整段文字完全相同时用这张表 */
 const EXACT={
+'纬度':'Latitude','经度':'Longitude','地图链接':'Map link',
 '打卡位置':'Clock-in location','外勤':'Field','外勤：可在任何地方打卡':'Field staff: clock in from anywhere','外勤打卡':'Field clock-in',
 '我的头像':'My photo','选择照片':'Choose photo','头像已更新':'Photo updated','移除照片':'Remove photo','图片打不开':'Cannot open this image','上传一张你的照片，会显示在首页，主管和 HR 也看得到。':'Upload a photo of yourself. It shows on your home screen, and supervisors and HR can see it.',
 '请假申请':'Leave request','申请请假':'Leave','申请加班':'Overtime','申请补卡':'Make-up punch',
