@@ -8,6 +8,7 @@ const CJK=/[㐀-鿿＀-￯　-〿]/;
 
 /* 1) 整段文字完全相同时用这张表 */
 const EXACT={
+'打卡位置':'Clock-in location','外勤':'Field','外勤：可在任何地方打卡':'Field staff: clock in from anywhere','外勤打卡':'Field clock-in',
 '我的头像':'My photo','选择照片':'Choose photo','头像已更新':'Photo updated','移除照片':'Remove photo','图片打不开':'Cannot open this image','上传一张你的照片，会显示在首页，主管和 HR 也看得到。':'Upload a photo of yourself. It shows on your home screen, and supervisors and HR can see it.',
 '请假申请':'Leave request','申请请假':'Leave','申请加班':'Overtime','申请补卡':'Make-up punch',
 '员工打卡':'Staff Clock-in','HR 考勤后台':'HR Attendance Console','首页':'Home','记录':'History','申请':'Requests','设置':'Settings',
@@ -30,6 +31,7 @@ const EXACT={
 
 /* 2) 句子/词组：在一段文字里按"长的先换"替换 */
 const PH=[
+['你是外勤人员，可以在任何地方打卡（系统会记录你打卡时的位置）。','You are field staff and can clock in from anywhere. Your location is recorded when you clock in.'],['可以在任何地方打卡（外勤，如安装工、司机）','Can clock in from anywhere (field staff, e.g. installers, drivers)'],['在地图上查看打卡位置','View clock-in location on map'],['外勤','Field'],
 ['头像照片（可不填）','Profile photo (optional)'],['图片格式不对','Invalid image format'],
 ['日班','Day shift'],['早班','Early shift'],['晚班','Night shift'],['新班次','New shift'],
 ['＋ ','+ '],['＋','+'],['⬇ 导出 Excel(CSV)','⬇ Export to Excel (CSV)'],['导出 Excel(CSV)','Export to Excel (CSV)'],['导出','Export'],['手机没电','Phone out of battery'],

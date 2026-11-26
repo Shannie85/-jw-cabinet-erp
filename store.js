@@ -31,16 +31,16 @@ async function reload(){
     sb.from('shifts').select('*').order('id').then(must),
     fetchAll(()=>sb.from('schedule_overrides').select('*').order('work_date')),
     sb.from('settings').select('*').then(must),
-    fetchAll(()=>sb.from('punches').select('id,emp_id,type,t,method,dist,face,has_photo,source,by_id,note').gte('t',since).order('t')),
+    fetchAll(()=>sb.from('punches').select('id,emp_id,type,t,method,dist,face,has_photo,source,by_id,note,lat,lng').gte('t',since).order('t')),
     fetchAll(()=>sb.from('requests').select('*').order('created_at',{ascending:false})),
     sb.from('audit').select('*').order('t',{ascending:false}).limit(300).then(r=>r.error?[]:r.data)]);
   const rate={};co.forEach(c=>rate[c.emp_id]=+c.rate);
-  S.employees=pr.map(p=>({id:p.id,name:p.name,dept:p.dept,role:p.role,managerId:p.manager_id,shiftId:p.shift_id,rate:rate[p.id]||0,email:p.email,active:p.active,avatar:p.avatar||null}));
+  S.employees=pr.map(p=>({id:p.id,name:p.name,dept:p.dept,role:p.role,managerId:p.manager_id,shiftId:p.shift_id,rate:rate[p.id]||0,email:p.email,active:p.active,avatar:p.avatar||null,anywhere:!!p.anywhere}));
   S.shifts=sh.map(s=>({id:s.id,name:s.name,start:s.start_time,end:s.end_time,color:s.color}));
   S.schedule={};so.forEach(o=>{(S.schedule[o.emp_id]=S.schedule[o.emp_id]||{})[o.work_date]=o.code});
   const st={};se.forEach(x=>st[x.key]=x.value);
   S.office=st.office||null;S.cfg=Object.assign({grace:5,otMin:30,otMult:1.5},st.cfg||{});
-  S.records=pu.map(r=>({id:r.id,empId:r.emp_id,type:r.type,t:normT(r.t),method:r.method,dist:r.dist,face:r.face,hasPhoto:r.has_photo,source:r.source,byId:r.by_id,note:r.note}));
+  S.records=pu.map(r=>({id:r.id,empId:r.emp_id,type:r.type,t:normT(r.t),method:r.method,dist:r.dist,face:r.face,hasPhoto:r.has_photo,lat:r.lat==null?null:+r.lat,lng:r.lng==null?null:+r.lng,source:r.source,byId:r.by_id,note:r.note}));
   S.requests=rq.map(q=>({id:q.id,type:q.type,empId:q.emp_id,date:q.date,to:q.to_date||q.date,days:q.days,kind:q.kind,hours:q.hours==null?null:+q.hours,ptype:q.ptype,time:q.time,reason:q.reason,status:q.status,history:q.history||[],created:q.created_at}));
   S.audit=au.map(a=>({id:a.id,t:a.t,byId:a.by_id,action:a.action,detail:a.detail}));
   reindex();
@@ -131,7 +131,7 @@ async function setOffice(o){must(await sb.from('settings').upsert({key:'office',
 async function saveCfg(c){must(await sb.from('settings').upsert({key:'cfg',value:c}));S.cfg=c}
 async function createUser(o){const uid=must(await sb.rpc('hr_create_user',{p_email:o.email,p_password:o.password,p_name:o.name,p_dept:o.dept,p_role:o.role,p_manager:o.managerId||null,p_shift:o.shiftId||'A',p_rate:o.rate||0}));await reload();return uid}
 async function updateUser(id,o){
-  must(await sb.from('profiles').update({name:o.name,dept:o.dept,role:o.role,manager_id:o.managerId||null,shift_id:o.shiftId,active:o.active}).eq('id',id));
+  must(await sb.from('profiles').update({name:o.name,dept:o.dept,role:o.role,manager_id:o.managerId||null,shift_id:o.shiftId,active:o.active,anywhere:o.anywhere}).eq('id',id));
   must(await sb.from('compensation').upsert({emp_id:id,rate:o.rate||0}));await reload()}
 async function setAvatar(id,dataUrl){must(await sb.rpc('set_avatar',{p_user:id,p_avatar:dataUrl}));await reload()}
 /* 把选好的照片裁成正方形、缩到 160 像素，变成很小的图片再保存 */
@@ -139,6 +139,7 @@ function resizeImage(file,size){size=size||160;return new Promise((ok,no)=>{cons
   img.onload=()=>{const c=document.createElement('canvas');c.width=c.height=size;const s=Math.min(img.width,img.height);
     c.getContext('2d').drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,size,size);URL.revokeObjectURL(url);ok(c.toDataURL('image/jpeg',.82))};
   img.onerror=()=>no(new Error('图片打不开'));img.src=url})}
+async function setAnywhere(id,v){must(await sb.from('profiles').update({anywhere:!!v}).eq('id',id));await reload()}
 async function setPassword(id,pw){must(await sb.rpc('hr_set_password',{p_user:id,p_password:pw}))}
 async function changeMyPassword(pw){const r=await sb.auth.updateUser({password:pw});if(r.error)throw new Error(r.error.message)}
 
@@ -187,6 +188,6 @@ async function logout(){await sb.auth.signOut();location.reload()}
 
 return {boot,logout,reload,me,emp,employees:()=>S.employees.filter(e=>e.active),allEmployees:()=>S.employees,shifts:()=>S.shifts,S:()=>S,
   shiftOf,shiftCode,summary,stats,nextType,punch,photo,addRecord,editRecord,deleteRecord,addRequest,decide,canDecide,stepName,
-  setShift,setShifts,saveShift,addShift,setOffice,saveCfg,createUser,updateUser,setPassword,changeMyPassword,setAvatar,resizeImage,
+  setShift,setShifts,saveShift,addShift,setOffice,saveCfg,createUser,updateUser,setPassword,changeMyPassword,setAnywhere,setAvatar,resizeImage,
   records:()=>S.records,requests:()=>S.requests,cfg:()=>S.cfg,office:()=>S.office,PRESENT,
   util:{pad,ymd,addDays,at,hm,dow,prevWork}}})();

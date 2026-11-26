@@ -173,7 +173,7 @@ function render(){
   const d=new Date(),t=ymd(d),s=DB.summary(me.id,t);
   $('now').textContent=`${wk[d.getDay()]}, ${t} ${hm(d)}`;$('big').textContent=hm(d);
   $('hello').textContent='你好，'+me.name;setAv($('av'),me);
-  const o=DB.office();$('where').textContent='📍 '+(o?o.name:'办公室未设定（去设置里设定）');
+  const o=DB.office();$('where').textContent='📍 '+(me.anywhere?'外勤：可在任何地方打卡':(o?o.name:'办公室未设定（去设置里设定）'));
   const nt=DB.nextType(me.id);
   $('mainBtn').classList.toggle('out',nt==='out');
   $('status').textContent=s.status==='请假'?'🏖️ 今天请假':!s.sh?'今天休息 😴':nt==='out'?'✅ 已上班，下班时再点一次':'还没上班打卡';
@@ -203,7 +203,7 @@ function renderReq(){const L=DB.requests().filter(q=>q.empId===me.id);
 function setAv(el,e){if(e.avatar){el.style.backgroundImage='url('+e.avatar+')';el.textContent=''}else{el.style.backgroundImage='';el.textContent=e.name[0].toUpperCase()}}
 async function pickAvatar(inp){const f=inp.files[0];if(!f)return;try{const d=await DB.resizeImage(f);await DB.setAvatar(me.id,d);render();toast('头像已更新','')}catch(e){toast('没成功',e.message,true)}inp.value=''}
 function renderSet(){setAv($('avSet'),me);$('langBtn').textContent=I18N.lang==='en'?'切换到中文':'Switch to English';$('acctInfo').textContent=me.name+' · '+me.email;
-  const o=DB.office();$('offInfo').textContent=o?`${o.name}，${o.radius}米内可打卡（由HR设定）`:'HR 还没有设定办公室位置，暂时不能打卡。'}
+  const o=DB.office();$('offInfo').textContent=me.anywhere?'你是外勤人员，可以在任何地方打卡（系统会记录你打卡时的位置）。':(o?`${o.name}，${o.radius}米内可打卡（由HR设定）`:'HR 还没有设定办公室位置，暂时不能打卡。')}
 function pwSheet(){$('sheetBody').innerHTML=`<h3>修改密码</h3><div class="f"><label>新密码（至少8位）<input id="fPw" type="password" autocomplete="new-password"></label></div><p style="display:flex;gap:10px"><button class="btn g" style="background:#e8eef7;color:#333" onclick="$('sheet').classList.remove('show')">取消</button><button class="btn b" style="flex:1" onclick="savePw()">保存</button></p>`;$('sheet').classList.add('show')}
 async function savePw(){const p=$('fPw').value;if(p.length<8)return toast('密码太短','至少8位',true);try{await DB.changeMyPassword(p);$('sheet').classList.remove('show');toast('密码已修改','')}catch(e){toast('没成功',e.message,true)}}
 async function showPhoto(id){try{const p=await DB.photo(id);$('sheetBody').innerHTML=`<h3>打卡自拍</h3><p style="text-align:center"><img src="${p}" style="max-width:100%;border-radius:12px"></p><p><button class="btn b w" onclick="$('sheet').classList.remove('show')">关闭</button></p>`;$('sheet').classList.add('show')}catch(e){toast('打不开',e.message,true)}}
@@ -232,16 +232,16 @@ async function clock(method){
   try{
     const s0=DB.summary(me.id,ymd(new Date()));
     if(s0.status==='请假')throw new Error('你今天请假，不需要打卡');
-    const o=DB.office();if(!o)throw new Error('HR 还没有设定办公室位置，暂时不能打卡');
+    const o=DB.office();if(!me.anywhere&&!o)throw new Error('HR 还没有设定办公室位置，暂时不能打卡');
     $('mainLbl').textContent='正在定位…';
     const pos=await getPos();
-    const m=dist(pos.latitude,pos.longitude,o.lat,o.lng);
-    if(m>o.radius)throw new Error(`你离${o.name}还有约${Math.round(m)}米，需要在${o.radius}米内才能打卡`);
+    if(!me.anywhere){const m=dist(pos.latitude,pos.longitude,o.lat,o.lng);
+      if(m>o.radius)throw new Error(`你离${o.name}还有约${Math.round(m)}米，需要在${o.radius}米内才能打卡`)}
     const photo=await selfie();if(photo===null)throw new Error('已取消打卡');
     const type=DB.nextType(me.id);
     $('mainLbl').textContent='正在提交…';
     await DB.punch(me.id,type,{method,face:photo.face,photo:photo.img,lat:pos.latitude,lng:pos.longitude});
-    render();toast(`${me.name} ${type==='in'?'上班打卡成功':'下班打卡成功'}`,`${photo.face?'人脸已验证':'已拍照记录'} · ${o.name}`);
+    render();toast(`${me.name} ${type==='in'?'上班打卡成功':'下班打卡成功'}`,`${photo.face?'人脸已验证':'已拍照记录'} · ${me.anywhere?'外勤打卡':o.name}`);
   }catch(e){toast('打卡没成功',e.message,true);render()}
   finally{busy=false}}
 let stream,camRes;
